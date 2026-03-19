@@ -1,0 +1,257 @@
+/* ========== 易策设计系统 - 全局样式 ========== */
+
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ========== CSS 变量 - 设计系统 ========== */
+:root {
+  /* 基础颜色 */
+  --bg-color: #000000;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+
+  /* 阴阳五行颜色 */
+  --yang-color: #ffd700;
+  --yin-color: #c0c0c0;
+  --accent-purple: #9b59b6;
+
+  /* 光晕效果 */
+  --glow-gold: rgba(255, 215, 0, 0.4);
+  --glow-silver: rgba(192, 192, 192, 0.3);
+  --glow-purple: rgba(155, 89, 182, 0.3);
+
+  /* 六爻颜色 - 从内到外 */
+  --yao-1-color: #ffd700;  /* 初爻 - 金色 */
+  --yao-2-color: #c0c0c0;  /* 二爻 - 银色 */
+  --yao-3-color: #b87333;  /* 三爻 - 铜色 */
+  --yao-4-color: #9b59b6;  /* 四爻 - 紫色 */
+  --yao-5-color: #3498db;  /* 五爻 - 蓝色 */
+  --yao-6-color: #2ecc71;  /* 上爻 - 绿色 */
+
+  /* 六爻光晕 */
+  --glow-yao-1: rgba(255, 215, 0, 0.5);
+  --glow-yao-2: rgba(192, 192, 192, 0.4);
+  --glow-yao-3: rgba(184, 115, 51, 0.5);
+  --glow-yao-4: rgba(155, 89, 182, 0.5);
+  --glow-yao-5: rgba(52, 152, 219, 0.5);
+  --glow-yao-6: rgba(46, 204, 113, 0.5);
+
+  /* 边框与背景 */
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color-light: rgba(255, 255, 255, 0.15);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+
+  /* 字体 */
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* 过渡动画 */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+/* ========== 基础样式 ========== */
+html,
+body {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ========== 全局动画 Keyframes ========== */
+
+/* 呼吸动画 */
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 40px var(--glow-gold), inset 0 0 40px var(--glow-gold);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 80px var(--glow-gold), inset 0 0 60px var(--glow-gold);
+  }
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 淡入缩放 */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 0 10px rgba(155, 89, 182, 0);
+  }
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 浮动粒子 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* 加载点动画 */
+@keyframes loadingDots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}
+
+/* 发光闪烁 */
+@keyframes glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px var(--glow-gold));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px var(--glow-gold));
+  }
+}
+
+/* ========== 动画工具类 ========== */
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.animate-fadeInScale {
+  animation: fadeInScale 0.3s ease forwards;
+}
+
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.animate-rotate {
+  animation: rotate 30s linear infinite;
+}
+
+.animate-float {
+  animation: float 20s infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* ========== 滚动条样式 ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ========== 工具类 ========== */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-yang {
+  color: var(--yang-color);
+}
+
+.text-yin {
+  color: var(--yin-color);
+}
+
+.bg-card {
+  background: var(--bg-card);
+}
+
+.border-subtle {
+  border: 1px solid var(--border-color);
+}

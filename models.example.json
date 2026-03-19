@@ -1,0 +1,37 @@
+{
+  "providers": {
+    "openai": {
+      "api_key": "your-api-key-here",
+      "base_url": "https://api.openai.com/v1",
+      "default_model": "gpt-4"
+    },
+    "minimax": {
+      "api_key": "your-api-key-here",
+      "base_url": "https://api.minimaxi.com/v1",
+      "default_model": "MiniMax-M2.7"
+    },
+    "deepseek": {
+      "api_key": "your-api-key-here",
+      "base_url": "https://api.deepseek.com/v1",
+      "default_model": "deepseek-chat"
+    }
+  },
+  "agents": {
+    "qigua_agent": {
+      "provider": "openai",
+      "model": "gpt-4"
+    },
+    "scene_router": {
+      "provider": "openai",
+      "model": "gpt-4"
+    },
+    "yao_agent": {
+      "provider": "openai",
+      "model": "gpt-4"
+    },
+    "reporter": {
+      "provider": "openai",
+      "model": "gpt-4"
+    }
+  }
+}

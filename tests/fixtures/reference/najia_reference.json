@@ -1,0 +1,54 @@
+{
+  "description": "纳甲干支对照表 - 8 trigrams × 6 positions",
+  "source": "京房易传",
+  "trigrams": {
+    "乾": {
+      "stem": "甲",
+      "yin_yang": "阳",
+      "branches": ["子", "寅", "辰", "午", "申", "戌"],
+      "wuxing": "金"
+    },
+    "震": {
+      "stem": "庚",
+      "yin_yang": "阳",
+      "branches": ["子", "寅", "辰", "午", "申", "戌"],
+      "wuxing": "木"
+    },
+    "坎": {
+      "stem": "戊",
+      "yin_yang": "阳",
+      "branches": ["子", "寅", "辰", "午", "申", "戌"],
+      "wuxing": "水"
+    },
+    "艮": {
+      "stem": "丙",
+      "yin_yang": "阳",
+      "branches": ["子", "寅", "辰", "午", "申", "戌"],
+      "wuxing": "土"
+    },
+    "坤": {
+      "stem": "乙",
+      "yin_yang": "阴",
+      "branches": ["未", "巳", "卯", "丑", "亥", "酉"],
+      "wuxing": "土"
+    },
+    "巽": {
+      "stem": "辛",
+      "yin_yang": "阴",
+      "branches": ["未", "巳", "卯", "丑", "亥", "酉"],
+      "wuxing": "木"
+    },
+    "离": {
+      "stem": "己",
+      "yin_yang": "阴",
+      "branches": ["未", "巳", "卯", "丑", "亥", "酉"],
+      "wuxing": "火"
+    },
+    "兑": {
+      "stem": "丁",
+      "yin_yang": "阴",
+      "branches": ["未", "巳", "卯", "丑", "亥", "酉"],
+      "wuxing": "金"
+    }
+  }
+}

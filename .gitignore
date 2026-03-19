@@ -1,0 +1,74 @@
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# Sensitive configuration
+models.json
+
+# Development tools
+.sisyphus/
+.superpowers/
+AGENTS.md
+docs/
+
+# Frontend build output
+web/frontend/dist/
+
+# Node modules
+node_modules/
+
+# Root package files (frontend has its own)
+/package.json
+/package-lock.json
+
+# Backup files
+*.bak
+*.backup
+*.backup2
+*.broken
+*.fixed
+
+# Test/prototype files
+web/preview/
+web/test-ws.html

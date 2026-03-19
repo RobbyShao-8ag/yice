@@ -1,0 +1,50 @@
+{
+  "description": "各世系类型的世应位置",
+  "source": "京房易传",
+  "generation_positions": {
+    "首卦": {
+      "shi_position": 6,
+      "ying_position": 3,
+      "note": "世爻在六爻，应爻在三爻"
+    },
+    "一世": {
+      "shi_position": 1,
+      "ying_position": 4,
+      "note": "世爻在初爻，应爻在四爻"
+    },
+    "二世": {
+      "shi_position": 2,
+      "ying_position": 5,
+      "note": "世爻在二爻，应爻在五爻"
+    },
+    "三世": {
+      "shi_position": 3,
+      "ying_position": 6,
+      "note": "世爻在三爻，应爻在上爻"
+    },
+    "四世": {
+      "shi_position": 4,
+      "ying_position": 1,
+      "note": "世爻在四爻，应爻在初爻"
+    },
+    "五世": {
+      "shi_position": 5,
+      "ying_position": 2,
+      "note": "世爻在五爻，应爻在二爻"
+    },
+    "游魂": {
+      "shi_position": 4,
+      "ying_position": 1,
+      "note": "世爻在四爻，应爻在初爻"
+    },
+    "归魂": {
+      "shi_position": 3,
+      "ying_position": 6,
+      "note": "世爻在三爻，应爻在上爻"
+    }
+  },
+  "ying_calculation": {
+    "formula": "应爻 = (世爻 + 2) mod 6 + 1",
+    "description": "应爻位置计算公式"
+  }
+}

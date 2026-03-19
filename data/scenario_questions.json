@@ -1,0 +1,122 @@
+{
+  "chuangye": {
+    "scenario_name": "创业投资",
+    "question_type": "创业",
+    "questions": [
+      {
+        "order": 1,
+        "field": "project_type",
+        "question": "您打算在哪个领域创业？",
+        "options": ["科技/互联网", "实体店铺", "服务行业", "其他（请补充）"]
+      },
+      {
+        "order": 2,
+        "field": "capital_status",
+        "question": "您的资金状况如何？",
+        "options": ["自有资金充足", "需要融资", "资金紧张", "其他（请补充）"]
+      },
+      {
+        "order": 3,
+        "field": "team_status",
+        "question": "您有创业团队吗？",
+        "options": ["已有合伙人", "正在寻找合伙人", "打算单干", "其他（请补充）"]
+      },
+      {
+        "order": 4,
+        "field": "market_analysis",
+        "question": "您对目标市场的了解程度？",
+        "options": ["非常了解，已有调研", "一般了解，需深入分析", "不太了解，需要学习", "其他（请补充）"]
+      }
+    ]
+  },
+  "shiye": {
+    "scenario_name": "事业发展",
+    "question_type": "职场",
+    "questions": [
+      {
+        "order": 1,
+        "field": "career_stage",
+        "question": "您目前的职业阶段是？",
+        "options": ["刚入职场 (1-3 年)", "职业成长期 (3-5 年)", "职业成熟期 (5-10 年)", "其他（请补充）"]
+      },
+      {
+        "order": 2,
+        "field": "career_goal",
+        "question": "您希望实现什么职业目标？",
+        "options": ["晋升加薪", "转行跳槽", "创业准备", "其他（请补充）"]
+      },
+      {
+        "order": 3,
+        "field": "company_size",
+        "question": "您所在公司的规模？",
+        "options": ["初创公司 (<50 人)", "中型公司 (50-500 人)", "大型企业 (>500 人)", "其他（请补充）"]
+      },
+      {
+        "order": 4,
+        "field": "promotion_plan",
+        "question": "您是否有明确的晋升规划？",
+        "options": ["有清晰规划并执行中", "有想法但未行动", "暂时迷茫", "其他（请补充）"]
+      }
+    ]
+  },
+  "ganqing": {
+    "scenario_name": "感情婚姻",
+    "question_type": "感情",
+    "questions": [
+      {
+        "order": 1,
+        "field": "relationship_status",
+        "question": "您目前的感情状态是？",
+        "options": ["单身", "恋爱中", "已婚", "其他（请补充）"]
+      },
+      {
+        "order": 2,
+        "field": "relationship_goal",
+        "question": "您希望达成什么感情目标？",
+        "options": ["找到合适伴侣", "改善现有关系", "婚姻决策", "其他（请补充）"]
+      },
+      {
+        "order": 3,
+        "field": "dating_purpose",
+        "question": "您交往的主要目的是？",
+        "options": ["以结婚为目的", "寻找长期伴侣", "随缘发展", "其他（请补充）"]
+      },
+      {
+        "order": 4,
+        "field": "family_factor",
+        "question": "家庭因素对您感情决策的影响？",
+        "options": ["影响很大，需家人同意", "有一定影响", "影响较小", "其他（请补充）"]
+      }
+    ]
+  },
+  "touzi": {
+    "scenario_name": "投资理财",
+    "question_type": "投资",
+    "questions": [
+      {
+        "order": 1,
+        "field": "investment_type",
+        "question": "您想投资什么类型的项目？",
+        "options": ["股票/基金", "房产", "创业项目", "其他（请补充）"]
+      },
+      {
+        "order": 2,
+        "field": "risk_preference",
+        "question": "您的风险偏好是？",
+        "options": ["保守型 (低风险)", "稳健型 (中等风险)", "进取型 (高风险)", "其他（请补充）"]
+      },
+      {
+        "order": 3,
+        "field": "capital_amount",
+        "question": "您计划投入的资金规模？",
+        "options": ["10 万以下", "10-50 万", "50-200 万", "其他（请补充）"]
+      },
+      {
+        "order": 4,
+        "field": "investment_period",
+        "question": "您期望的投资期限？",
+        "options": ["短期 (1 年以内)", "中期 (1-3 年)", "长期 (3 年以上)", "其他（请补充）"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,770 @@
+{
+  "1": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "乾"
+  },
+  "2": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "坤"
+  },
+  "3": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "震"
+  },
+  "4": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "坎"
+  },
+  "5": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "乾"
+  },
+  "6": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "坎"
+  },
+  "7": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "坎"
+  },
+  "8": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "坤"
+  },
+  "9": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "乾"
+  },
+  "10": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "兑"
+  },
+  "11": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "乾"
+  },
+  "12": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "坤"
+  },
+  "13": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "离"
+  },
+  "14": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "乾"
+  },
+  "15": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "艮"
+  },
+  "16": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "坤"
+  },
+  "17": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "震"
+  },
+  "18": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "巽"
+  },
+  "19": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "兑"
+  },
+  "20": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "坤"
+  },
+  "21": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "震"
+  },
+  "22": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "离"
+  },
+  "23": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "坤"
+  },
+  "24": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "震"
+  },
+  "25": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "震"
+  },
+  "26": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "乾"
+  },
+  "27": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "震"
+  },
+  "28": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "巽"
+  },
+  "29": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "坎"
+  },
+  "30": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "离"
+  },
+  "31": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "艮"
+  },
+  "32": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "巽"
+  },
+  "33": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "艮"
+  },
+  "34": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "乾"
+  },
+  "35": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "坤"
+  },
+  "36": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "离"
+  },
+  "37": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "离"
+  },
+  "38": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "兑"
+  },
+  "39": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "艮"
+  },
+  "40": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "坎"
+  },
+  "41": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "兑"
+  },
+  "42": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "震"
+  },
+  "43": {
+    "binary_code": [
+      1,
+      1,
+      1,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "乾"
+  },
+  "44": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1
+    ],
+    "upper_trigram": "乾",
+    "lower_trigram": "巽"
+  },
+  "45": {
+    "binary_code": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "坤"
+  },
+  "46": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "upper_trigram": "坤",
+    "lower_trigram": "巽"
+  },
+  "47": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "坎"
+  },
+  "48": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "巽"
+  },
+  "49": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "离"
+  },
+  "50": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "巽"
+  },
+  "51": {
+    "binary_code": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "震"
+  },
+  "52": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      0,
+      0,
+      1
+    ],
+    "upper_trigram": "艮",
+    "lower_trigram": "艮"
+  },
+  "53": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "艮"
+  },
+  "54": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "兑"
+  },
+  "55": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "离"
+  },
+  "56": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "艮"
+  },
+  "57": {
+    "binary_code": [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "巽"
+  },
+  "58": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      0,
+      1,
+      1
+    ],
+    "upper_trigram": "兑",
+    "lower_trigram": "兑"
+  },
+  "59": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "坎"
+  },
+  "60": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "兑"
+  },
+  "61": {
+    "binary_code": [
+      0,
+      1,
+      1,
+      1,
+      1,
+      0
+    ],
+    "upper_trigram": "巽",
+    "lower_trigram": "兑"
+  },
+  "62": {
+    "binary_code": [
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+    ],
+    "upper_trigram": "震",
+    "lower_trigram": "艮"
+  },
+  "63": {
+    "binary_code": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      0
+    ],
+    "upper_trigram": "坎",
+    "lower_trigram": "离"
+  },
+  "64": {
+    "binary_code": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+    ],
+    "upper_trigram": "离",
+    "lower_trigram": "坎"
+  }
+}
