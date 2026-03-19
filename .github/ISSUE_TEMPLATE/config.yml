@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 项目文档
+    url: https://github.com/RobbyShao-8ag/yice#易策-yice
+    about: 查看项目README和文档
+  - name: 💬 GitHub Discussion
+    url: https://github.com/RobbyShao-8ag/yice/discussions
+    about: 进行一般性讨论、提问和分享想法
