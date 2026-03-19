@@ -18,17 +18,19 @@
 
 #### 开发环境准备
 
+**CLI版本（开箱即用，无需安装依赖）：**
 ```bash
-# 克隆仓库
 git clone https://github.com/RobbyShao-8ag/yice.git
 cd yice
+python main.py
+# 直接运行，无需任何安装！
+```
 
-# 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装依赖
+**Web版本（需要安装后端依赖）：**
+```bash
+cd yice/web/backend
 pip install -r requirements.txt
+python main.py
 ```
 
 #### 开发流程
@@ -43,7 +45,17 @@ pip install -r requirements.txt
 3. **编写代码** → 遵循项目现有的代码风格
 4. **测试** → 确保改动有测试覆盖
    ```bash
+   # 确保安装了pytest
+   pip install pytest
+
+   # 运行所有测试
    pytest tests/
+
+   # 只运行核心模块测试
+   pytest tests/core/ tests/agents/
+
+   # 带覆盖率报告
+   pytest tests/ --cov=. --cov-report=term-missing
    ```
 5. **提交** → 提交信息要清晰描述改动
    ```bash
@@ -58,8 +70,6 @@ pip install -r requirements.txt
 <type>: <subject>
 
 可选的详细描述
-
-[可选的 footer]
 ```
 
 **Type 类型：**
@@ -82,7 +92,7 @@ pip install -r requirements.txt
 ### 核心设计原则
 - 保持模块职责单一
 - 尊重现有的架构设计（参考 `core/` 和 `agents/` 目录）
--周易相关的逻辑请保持学术准确性，参考 `docs/` 中的参考文献
+- 周易相关的逻辑请保持学术准确性，参考 `docs/` 中的参考文献
 
 ## 🧪 测试
 
@@ -96,8 +106,10 @@ pytest tests/
 pytest tests/core/ tests/agents/
 
 # 带覆盖率报告
-pytest tests/ --cov=.
+pytest tests/ --cov=. --cov-report=term-missing
 ```
+
+测试文件在 `tests/` 目录下，使用 **pytest** 框架。
 
 ## 📄 文档
 
@@ -117,7 +129,9 @@ PR被合并前需要满足：
 
 ## 📜 许可证
 
-贡献的代码将遵循项目现有的开源许可证（Apache 2.0）。
+本项目采用 **MIT License** 开源许可证。
+
+贡献的代码同样遵循 MIT License。
 
 ---
 
