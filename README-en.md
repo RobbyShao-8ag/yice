@@ -42,7 +42,7 @@ yice uses this symbolic framework as input for AI agents to analyze decisions fr
 
 ## Quick Start
 
-### 1. Clone & Install
+### 1. One-Click Install
 
 ```bash
 git clone https://github.com/RobbyShao-8ag/yice.git
@@ -53,7 +53,6 @@ cd yice
 ### 2. Configure API Key
 
 Edit `models.json` with your LLM provider API key:
-
 - **OpenAI**: https://platform.openai.com/api-keys
 - **DeepSeek**: https://platform.deepseek.com (cost-effective)
 - **MiniMax**: https://www.minimaxi.com
@@ -61,12 +60,45 @@ Edit `models.json` with your LLM provider API key:
 ### 3. Run
 
 ```bash
-# CLI mode
+# CLI mode (zero dependencies)
 python main.py
 
-# Web interface
+# Web interface (full experience)
 python web/main.py
 ```
+
+---
+
+<details>
+<summary>📖 Manual Installation</summary>
+
+### CLI Version (Zero Dependencies)
+```bash
+git clone https://github.com/RobbyShao-8ag/yice.git
+cd yice
+cp models.example.json models.json
+# Edit models.json to add API key
+python main.py
+```
+
+### Web Version
+```bash
+# Backend
+cd web/backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Frontend
+cd ../frontend
+npm install
+
+# Start
+cd ../..
+python web/main.py
+```
+
+</details>
 
 ---
 

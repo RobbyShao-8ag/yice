@@ -90,49 +90,73 @@
 
 ## 快速开始：5分钟本地运行
 
-### 1. 准备环境
-```bash
-# 确保有Python 3.11+
-python --version
+### 1. 一键安装
 
+```bash
 # 克隆项目
-git clone https://github.com/yourusername/yice.git
+git clone https://github.com/RobbyShao-8ag/yice.git
 cd yice
+
+# 一键安装脚本（自动检测Python版本、安装依赖）
+./setup.sh
 ```
 
-### 2. 配置API密钥（可选）
-```bash
-# 复制配置模板
-cp models.example.json models.json
+### 2. 配置API密钥
 
-# 编辑models.json，填入你的LLM API密钥，也可以在web端设置
-# 支持OpenAI格式API
+```bash
+# 编辑 models.json，填入你的LLM API密钥
+# 支持的Provider：
+#   - OpenAI: https://platform.openai.com/api-keys
+#   - DeepSeek: https://platform.deepseek.com (高性价比)
+#   - MiniMax: https://www.minimaxi.com
 ```
 
-### 3. 运行CLI版本（零依赖，前期测试）
+### 3. 运行
+
 ```bash
-# 直接运行，无需安装任何依赖
+# CLI版本（零依赖，快速体验）
 python main.py
 
-# 输入你的问题，比如：
-# "我现在该不该换工作？"
-# "这个投资项目值得做吗？"
+# Web版本（完整体验）
+python web/main.py
 ```
 
-### 4. 启动Web版本（推荐）
+---
+
+<details>
+<summary>📖 详细安装步骤（手动安装）</summary>
+
+### 环境要求
+- Python 3.11+
+- Node.js 18+（Web版本需要）
+
+### CLI版本（零依赖）
 ```bash
-# 后端依赖
+git clone https://github.com/RobbyShao-8ag/yice.git
+cd yice
+cp models.example.json models.json
+# 编辑 models.json 配置 API 密钥
+python main.py
+```
+
+### Web版本
+```bash
+# 后端
 cd web/backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 
-# 前端依赖
+# 前端
 cd ../frontend
 npm install
 
-# 一键启动（需要Python和Node.js）
+# 启动
 cd ../..
 python web/main.py
 ```
+
+</details>
 
 ---
 
