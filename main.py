@@ -14,6 +14,13 @@ import os
 import sys
 from typing import Callable, Optional
 
+# Python version check
+MIN_PYTHON_VERSION = (3, 11)
+if sys.version_info < MIN_PYTHON_VERSION:
+    print(f"❌ 需要 Python {MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]}+")
+    print(f"   当前版本: {sys.version_info.major}.{sys.version_info.minor}")
+    sys.exit(1)
+
 from core.data_loader import DataLoader, DataLoaderConfig
 from core.errors import DataError, LLMCallError, PartialFailureError
 from core.llm_client import LLMClient, LLMConfig, load_config

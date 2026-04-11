@@ -1,6 +1,12 @@
 # 易策 (yice) - 基于周易64卦的AI多Agent决策系统
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![GitHub Stars](https://img.shields.io/github/stars/RobbyShao-8ag/yice.svg?style=social)](https://github.com/RobbyShao-8ag/yice)
+
 > "易者，变易也。策者，决策也。"
+
+[English](README-en.md) | 中文
 
 ## ⚡ 一句话说明白
 
