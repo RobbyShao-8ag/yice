@@ -186,7 +186,7 @@ const handleDivinationMessage = (data: WebSocketMessage) => {
           key_risks: divinationData.report.key_risks,
           timing_judgment: divinationData.report.timing_judgment,
           next_steps: divinationData.report.next_steps,
-          yao_summary: (divinationData.report as any).yao_summary,
+          yao_summary: divinationData.report.yao_summary,
         }
         showReportModal.value = true
       }
@@ -424,7 +424,7 @@ onUnmounted(() => {
           </div>
           <div class="yao-interpretation" v-html="renderMarkdown(output.analysis)"></div>
           <div v-if="hasContent(output.advice)" class="yao-advice" v-html="renderMarkdown(output.advice)"></div>
-          <div v-if="hasContent(output.risks)" class="yao-risks" v-html="renderMarkdown(output.risks || '')"></div>
+          <div v-if="hasContent(output.risks)" class="yao-risks" v-html="renderMarkdown(output.risks)"></div>
         </div>
       </div>
     </section>
@@ -1002,36 +1002,6 @@ onUnmounted(() => {
 
 .yao-brief :deep(p) {
   margin: 0;
-}
-
-.yao-brief :deep(h1),
-.yao-brief :deep(h2),
-.yao-brief :deep(h3),
-.yao-brief :deep(h4),
-.yao-brief :deep(h5),
-.yao-brief :deep(h6) {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  line-height: 1.4;
-}
-
-.yao-brief :deep(table) {
-  font-size: 12px;
-  width: 100%;
-  border-collapse: collapse;
-  margin: 4px 0;
-}
-
-.yao-brief :deep(th),
-.yao-brief :deep(td) {
-  padding: 2px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: left;
-}
-
-.yao-brief :deep(th) {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .section-content {

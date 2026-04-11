@@ -15,6 +15,8 @@ from core.models import HexagramContext, YaoAnalysis, YaoPosition
 
 
 def _parse_llm_response(response: str) -> dict[str, str]:
+    response = _filter_think_blocks(response)
+
     sections = {"解读": "", "建议": "", "风险": ""}
     current_section = None
     lines = response.strip().split("\n")
@@ -36,43 +38,67 @@ def _parse_llm_response(response: str) -> dict[str, str]:
             content = re.sub(r"^[#*\-]*\s*风险[:：]?\s*", "", line)
             if content:
                 sections["风险"] = content
-        elif re.match(r"^[#*\-]*\s*(核心)?(决策)?建议[:：]?\s*", line):
-            current_section = "建议"
-            content = re.sub(r"^[#*\-]*\s*(核心)?(决策)?建议[:：]?\s*", "", line)
-            if content:
-                sections["建议"] = content
-        elif re.match(r"^[#*\-]*\s*(极端)?风险评估[:：]?\s*", line):
-            current_section = "风险"
-            content = re.sub(r"^[#*\-]*\s*(极端)?风险评估[:：]?\s*", "", line)
-            if content:
-                sections["风险"] = content
-        elif re.match(r"^[#*\-]*\s*(反思)?警示[:：]?\s*", line):
-            current_section = "风险"
-            content = re.sub(r"^[#*\-]*\s*(反思)?警示[:：]?\s*", "", line)
-            if content:
-                sections["风险"] = content
-        elif re.match(r"^[#*\-]*\s*经验(教训)?总结[:：]?\s*", line):
-            current_section = "建议"
-            content = re.sub(r"^[#*\-]*\s*经验(教训)?总结[:：]?\s*", "", line)
-            if content:
-                sections["建议"] = content
-        elif re.match(r"^##\s*一[、.．]\s*.*风险", line):
-            current_section = "风险"
-        elif re.match(r"^##\s*二[、.．]\s*.*警示", line):
-            current_section = "风险"
-        elif re.match(r"^##\s*三[、.．]\s*.*总结", line):
-            current_section = "建议"
-        elif re.match(r"^##\s*四[、.．]\s*.*结论", line):
-            current_section = "建议"
-        elif re.match(r"^##\s*卦象解析", line):
-            current_section = "解读"
         elif current_section and line:
             sections[current_section] += "\n" + line
 
-    if not sections["解读"] and not sections["建议"] and not sections["风险"]:
-        sections["解读"] = response
-
     return sections
+
+
+def _filter_think_blocks(response: str) -> str:
+    """Remove think/reasoning blocks from LLM response."""
+    import re
+
+    # Pattern 1: hlen content hlen (most common)
+    response = re.sub(
+        r"^hlen\s*\n(.*?\n)?hlen\s*$",
+        "",
+        response,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+
+    # Pattern 2: Inline hlen blocks
+    response = re.sub(
+        r"hlen\s*(.*?)\s*hlen",
+        "",
+        response,
+        flags=re.DOTALL,
+    )
+
+    # Pattern 3: Line-by-line cleanup for any remaining think markers
+    lines = response.split("\n")
+    result = []
+    in_think = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Start of think block
+        if stripped.lower() == "hlen" or "hlen" in stripped[:10].lower():
+            in_think = True
+            continue
+
+        # End of think block
+        if stripped.lower() == "hlen" or "hlen" in stripped[-10:].lower():
+            in_think = False
+            continue
+
+        # Skip lines inside think block
+        if in_think:
+            continue
+
+        # Skip standalone markers
+        if stripped.lower() in ["hlen", "hlen", "think", "|think|"]:
+            continue
+
+        result.append(line)
+
+    filtered = "\n".join(result)
+
+    # Debug
+    if len(filtered) < len(response):
+        print(f"[FILTER] {len(response)} -> {len(filtered)} chars")
+
+    return filtered
 
 
 def build_system_prompt(position: YaoPosition) -> str:
@@ -680,12 +706,7 @@ class YaoAgent6:
 2. 提供反思和警示
 3. 总结经验和教训
 
-记住"亢龙有悔"的智慧：物极必反，适可而止。
-
-输出格式：
-- 解读：爻辞在当前情境下的含义解读
-- 建议：具体可行的行动建议
-- 风险：需要注意的风险点"""
+记住"亢龙有悔"的智慧：物极必反，适可而止。"""
 
     def __init__(self, config: YaoAgentConfig):
         self.position = YaoPosition.TOP

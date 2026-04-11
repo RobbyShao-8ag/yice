@@ -338,9 +338,7 @@ class ReporterAgent:
 
     def _filter_think_content(self, response: str) -> str:
         """Remove think/reasoning blocks from response."""
-        # MiniMax hlen format
         response = re.sub(r"hlen.*?hlen", "", response, flags=re.DOTALL | re.IGNORECASE)
-        # Tagged think blocks
         response = re.sub(
             r"\|think\|.*?\|think\|", "", response, flags=re.DOTALL | re.IGNORECASE
         )
@@ -349,13 +347,6 @@ class ReporterAgent:
         )
         response = re.sub(
             r"\[think\].*?\[think\]", "", response, flags=re.DOTALL | re.IGNORECASE
-        )
-        # XML-style think tags (MiniMax format)
-        response = re.sub(
-            r"<think>.*?(?=(?:\n\n|\Z))", "", response, flags=re.DOTALL | re.IGNORECASE
-        )
-        response = re.sub(
-            r"</think>", "", response, flags=re.IGNORECASE
         )
         return response.strip()
 

@@ -1024,13 +1024,14 @@ async def _run_yao_divination(
         )
 
         # Send final completion with report
-        # Use advice as brief summary (more concise than analysis)
         yao_summary = [
             {
                 "position": ya.position,
                 "line_name": ya.line_name,
                 "yao_ci": ya.yao_ci,
-                "brief": ya.advice if ya.advice and ya.advice not in ["待生成建议", "待补充"] else (ya.analysis[:100] + "..." if len(ya.analysis) > 100 else ya.analysis),
+                "brief": ya.analysis[:100] + "..."
+                if len(ya.analysis) > 100
+                else ya.analysis,
             }
             for ya in yao_analyses
         ]
@@ -1060,6 +1061,11 @@ async def _run_yao_divination(
         logger.error(f"Yao divination error: {e}")
         logger.error(traceback.format_exc())
         await manager.send_personal(
+            websocket,
+            {"type": "error", "message": f"推演失败：{str(e)}"},
+        )
+        raise
+(
             websocket,
             {"type": "error", "message": f"推演失败：{str(e)}"},
         )
