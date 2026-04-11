@@ -1065,8 +1065,3 @@ async def _run_yao_divination(
             {"type": "error", "message": f"推演失败：{str(e)}"},
         )
         raise
-(
-            websocket,
-            {"type": "error", "message": f"推演失败：{str(e)}"},
-        )
-        raise

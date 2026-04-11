@@ -239,23 +239,22 @@ class YaoAgent:
 
 请从{self.position.fused_role}的角度分析此爻辞对用户问题的启示。"""
 
-
-def _parse_response(
-    self,
-    position: int,
-    line_name: str,
-    yao_ci: str,
-    response: str,
-) -> YaoAnalysis:
-    sections = _parse_llm_response(response)
-    return YaoAnalysis(
-        position=position,
-        line_name=line_name,
-        yao_ci=yao_ci,
-        analysis=sections["解读"].strip() or response.strip(),
-        advice=sections["建议"].strip() or "",
-        risks=sections["风险"].strip() or "",
-    )
+    def _parse_response(
+        self,
+        position: int,
+        line_name: str,
+        yao_ci: str,
+        response: str,
+    ) -> YaoAnalysis:
+        sections = _parse_llm_response(response)
+        return YaoAnalysis(
+            position=position,
+            line_name=line_name,
+            yao_ci=yao_ci,
+            analysis=sections["解读"].strip() or response.strip(),
+            advice=sections["建议"].strip() or "",
+            risks=sections["风险"].strip() or "",
+        )
 
 
 class YaoAgent1:

@@ -511,7 +511,7 @@ class TestReporterEdgeCases:
         report = agent.generate_report(question, hexagram, yao_analyses)
 
         assert report.hu_gua_analysis is not None
-        assert "无爻辞数据" in report.hu_gua_analysis
+        assert "完整的六爻数据" in report.hu_gua_analysis
 
     def test_llm_failure_fallback_generates_real_content(self):
         def failing_llm(system: str, user: str) -> str:
