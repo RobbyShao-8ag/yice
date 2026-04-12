@@ -69,9 +69,9 @@ Chinese LLMs have higher Chinese training data ratio, providing better understan
 
 | Model | Features | Price |
 |-------|----------|-------|
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/deepseek.svg" width="24" valign="middle"> **DeepSeek R1** | Best reasoning, lowest cost | $0.14/M tokens |
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/qwen.svg" width="24" valign="middle"> **Qwen3-Max** | Best Chinese understanding, 1M context | $0.28/M tokens |
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/zhipu.svg" width="24" valign="middle"> **GLM-5.1** | New user bonus: 20M free tokens | $0.70/M tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/deepseek-color.svg" width="24" valign="middle"> **DeepSeek R1** | Best reasoning, lowest cost | $0.14/M tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/qwen-color.svg" width="24" valign="middle"> **Qwen3-Max** | Best Chinese understanding, 1M context | $0.28/M tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/zhipu-color.svg" width="24" valign="middle"> **GLM-5.1** | New user bonus: 20M free tokens | $0.70/M tokens |
 
 ### Configuration Examples
 

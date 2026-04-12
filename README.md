@@ -122,9 +122,9 @@ cd yice
 
 | 模型 | 特点 | 价格 |
 |------|------|------|
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/deepseek.svg" width="24" valign="middle"> **DeepSeek R1** | 推理能力最强，性价比最高 | ¥1/百万tokens |
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/qwen.svg" width="24" valign="middle"> **Qwen3-Max** | 中文理解最好，支持1M超长上下文 | ¥2/百万tokens |
-| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/zhipu.svg" width="24" valign="middle"> **GLM-5.1** | 新用户福利：送2000万免费tokens | ¥5/百万tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/deepseek-color.svg" width="24" valign="middle"> **DeepSeek R1** | 推理能力最强，性价比最高 | ¥1/百万tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/qwen-color.svg" width="24" valign="middle"> **Qwen3-Max** | 中文理解最好，支持1M超长上下文 | ¥2/百万tokens |
+| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/zhipu-color.svg" width="24" valign="middle"> **GLM-5.1** | 新用户福利：送2000万免费tokens | ¥5/百万tokens |
 
 ### 配置示例
 
