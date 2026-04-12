@@ -52,20 +52,51 @@ cd yice
 
 ### 2. Configure API Key
 
-Edit `models.json` with your LLM provider API key:
-- **OpenAI**: https://platform.openai.com/api-keys
-- **DeepSeek**: https://platform.deepseek.com (cost-effective)
-- **MiniMax**: https://www.minimaxi.com
+Edit `models.json` with your LLM provider API key.
 
-### 3. Run
+---
 
-```bash
-# CLI mode (zero dependencies)
-python main.py
+## 🎯 Model Recommendation: Chinese LLMs for I Ching Analysis
 
-# Web interface (full experience)
-python web/main.py
+I Ching divination requires deep understanding of:
+- **Classical Chinese** (文言文): Ancient grammar, historical references
+- **Cultural context**: Concepts like "Time, Position, Change" (时、位、变)
+- **Historical background**: Western Zhou system, hexagram evolution logic
+
+Chinese LLMs have higher Chinese training data ratio, providing better understanding for I Ching analysis.
+
+### Recommended Models
+
+| Model | Features | Price |
+|-------|----------|-------|
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/deepseek.svg" width="24" valign="middle"> **DeepSeek R1** | Best reasoning, lowest cost | $0.14/M tokens |
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/qwen.svg" width="24" valign="middle"> **Qwen3-Max** | Best Chinese understanding, 1M context | $0.28/M tokens |
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/zhipu.svg" width="24" valign="middle"> **GLM-5.1** | New user bonus: 20M free tokens | $0.70/M tokens |
+
+### Configuration Examples
+
+**Option 1: DeepSeek R1 (Recommended)**
+```json
+{
+  "providers": {
+    "openrouter": {
+      "api_key": "your-key",
+      "base_url": "https://openrouter.ai/api/v1"
+    }
+  },
+  "agents": {
+    "qigua_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "scene_router": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "yao_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "reporter": { "provider": "openrouter", "model": "deepseek/deepseek-r1" }
+  }
+}
 ```
+
+**Get API Keys:**
+- DeepSeek: https://platform.deepseek.com or https://openrouter.ai
+- Qwen: https://dashscope.aliyun.com
+- GLM: https://open.bigmodel.cn
 
 ---
 

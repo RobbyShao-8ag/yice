@@ -1,37 +1,44 @@
 {
+  "_comment": "推荐配置示例（选其一），国产模型对周易文言文理解更好",
+
+  "_推荐方案1_DeepSeek_R1": "性价比最高，推理强。获取API Key: https://openrouter.ai 或 https://platform.deepseek.com",
+  "_推荐方案2_Qwen3_Max": "阿里百炼，中文理解最强。获取API Key: https://dashscope.aliyun.com",
+  "_推荐方案3_GLM_5_1": "智谱AI，新用户送2000万tokens。获取API Key: https://open.bigmodel.cn",
+
   "providers": {
-    "openai": {
+    "openrouter": {
       "api_key": "your-api-key-here",
-      "base_url": "https://api.openai.com/v1",
-      "default_model": "gpt-4"
+      "base_url": "https://openrouter.ai/api/v1",
+      "default_model": "deepseek/deepseek-r1"
     },
-    "minimax": {
+    "qwen": {
       "api_key": "your-api-key-here",
-      "base_url": "https://api.minimaxi.com/v1",
-      "default_model": "MiniMax-M2.7"
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "default_model": "qwen3-max"
     },
-    "deepseek": {
+    "glm": {
       "api_key": "your-api-key-here",
-      "base_url": "https://api.deepseek.com/v1",
-      "default_model": "deepseek-chat"
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "default_model": "glm-5.1"
     }
   },
+
   "agents": {
     "qigua_agent": {
-      "provider": "openai",
-      "model": "gpt-4"
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1"
     },
     "scene_router": {
-      "provider": "openai",
-      "model": "gpt-4"
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1"
     },
     "yao_agent": {
-      "provider": "openai",
-      "model": "gpt-4"
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1"
     },
     "reporter": {
-      "provider": "openai",
-      "model": "gpt-4"
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1"
     }
   }
 }

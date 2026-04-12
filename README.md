@@ -105,11 +105,89 @@ cd yice
 
 ```bash
 # 编辑 models.json，填入你的LLM API密钥
-# 支持的Provider：
-#   - OpenAI: https://platform.openai.com/api-keys
-#   - DeepSeek: https://platform.deepseek.com (高性价比)
-#   - MiniMax: https://www.minimaxi.com
 ```
+
+---
+
+## 🎯 模型选择建议：为什么推荐国产大模型
+
+周易推演需要深度理解：
+- **文言文爻辞**：古汉语语法、典故引用
+- **文化语境**："时、位、变"等周易哲学概念
+- **历史背景**：西周制度、六十四卦演化逻辑
+
+国产大模型中文训练数据占比更高，对这些内容理解更深，推演结果更准确。
+
+### 三款推荐配置
+
+| 模型 | 特点 | 价格 |
+|------|------|------|
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/deepseek.svg" width="24" valign="middle"> **DeepSeek R1** | 推理能力最强，性价比最高 | ¥1/百万tokens |
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/qwen.svg" width="24" valign="middle"> **Qwen3-Max** | 中文理解最好，支持1M超长上下文 | ¥2/百万tokens |
+| <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/main/static/zhipu.svg" width="24" valign="middle"> **GLM-5.1** | 新用户福利：送2000万免费tokens | ¥5/百万tokens |
+
+### 配置示例
+
+**方案1：DeepSeek R1（推荐）**
+```json
+{
+  "providers": {
+    "openrouter": {
+      "api_key": "your-key",
+      "base_url": "https://openrouter.ai/api/v1"
+    }
+  },
+  "agents": {
+    "qigua_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "scene_router": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "yao_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
+    "reporter": { "provider": "openrouter", "model": "deepseek/deepseek-r1" }
+  }
+}
+```
+
+**方案2：Qwen3-Max（阿里百炼）**
+```json
+{
+  "providers": {
+    "qwen": {
+      "api_key": "your-key",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    }
+  },
+  "agents": {
+    "qigua_agent": { "provider": "qwen", "model": "qwen3-max" },
+    "scene_router": { "provider": "qwen", "model": "qwen3-max" },
+    "yao_agent": { "provider": "qwen", "model": "qwen3-max" },
+    "reporter": { "provider": "qwen", "model": "qwen3-max" }
+  }
+}
+```
+
+**方案3：GLM-5.1（智谱AI）**
+```json
+{
+  "providers": {
+    "glm": {
+      "api_key": "your-key",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4"
+    }
+  },
+  "agents": {
+    "qigua_agent": { "provider": "glm", "model": "glm-5.1" },
+    "scene_router": { "provider": "glm", "model": "glm-5.1" },
+    "yao_agent": { "provider": "glm", "model": "glm-5.1" },
+    "reporter": { "provider": "glm", "model": "glm-5.1" }
+  }
+}
+```
+
+**获取 API Key：**
+- DeepSeek: https://platform.deepseek.com 或 https://openrouter.ai
+- Qwen: https://dashscope.aliyun.com
+- GLM: https://open.bigmodel.cn（新用户注册送2000万tokens）
+
+---
 
 ### 3. 运行
 
