@@ -2,6 +2,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,46 @@ def _save_config(config: dict[str, Any]) -> None:
         json.dump(config, f, ensure_ascii=False, indent=2)
 
 
+def _mask_api_key(api_key: str) -> str:
+    """Return a display-safe API key."""
+    if not api_key:
+        return ""
+    if len(api_key) <= 8:
+        return "*" * len(api_key)
+    return f"{api_key[:3]}...{api_key[-4:]}"
+
+
+def _is_masked_api_key(api_key: str) -> bool:
+    """Return True if the key looks like a display-only masked value."""
+    return "..." in api_key or set(api_key) == {"*"}
+
+
+def _mask_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of config with provider API keys redacted."""
+    masked = deepcopy(config)
+    providers = masked.get("providers", {})
+    for provider_config in providers.values():
+        if isinstance(provider_config, dict):
+            provider_config["api_key"] = _mask_api_key(
+                str(provider_config.get("api_key", ""))
+            )
+    return masked
+
+
+def _merge_preserved_api_keys(config: dict[str, Any]) -> dict[str, Any]:
+    """Preserve existing keys when clients send masked placeholders."""
+    existing = _load_config() if CONFIG_FILE.exists() else {}
+    existing_providers = existing.get("providers", {})
+    for provider_name, provider_config in config.get("providers", {}).items():
+        if not isinstance(provider_config, dict):
+            continue
+        api_key = str(provider_config.get("api_key", ""))
+        if _is_masked_api_key(api_key):
+            existing_key = existing_providers.get(provider_name, {}).get("api_key", "")
+            provider_config["api_key"] = existing_key
+    return config
+
+
 @router.get("/")
 async def get_config() -> dict[str, Any]:
     """Get current system configuration."""
@@ -35,7 +76,7 @@ async def get_config() -> dict[str, Any]:
         config = _load_config()
         return {
             "status": "ok",
-            "config": config,
+            "config": _mask_config(config),
         }
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="配置文件不存在")
@@ -48,6 +89,8 @@ async def update_config(config: dict[str, Any]) -> dict[str, Any]:
     """Update system configuration."""
     if not config:
         raise HTTPException(status_code=400, detail="配置不能为空")
+
+    config = _merge_preserved_api_keys(config)
 
     # Validate config structure
     if "providers" not in config:

@@ -43,6 +43,32 @@ class TestLLMClient:
         result = client.chat("system", "user")
         assert result == "test response"
 
+    def test_parse_response_does_not_log_raw_content_by_default(self, client, mocker):
+        """Test default logging avoids full LLM response content."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "sensitive decision details"}}]}
+        ).encode()
+        mock_logger = mocker.patch("core.llm_client.logger")
+
+        result = client._parse_response(mock_response)
+
+        assert result == "sensitive decision details"
+        logged_messages = [
+            str(call.args[0]) for call in mock_logger.info.call_args_list if call.args
+        ]
+        assert not any("LLM RAW RESPONSE" in message for message in logged_messages)
+        assert not any("sensitive decision details" in message for message in logged_messages)
+
+    def test_parse_response_filters_reasoning_blocks(self, client):
+        """Test provider reasoning blocks do not leak into content."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"choices": [{"message": {"content": "hlen\nhidden\nhline\n解读：公开内容"}}]}
+        ).encode()
+
+        assert client._parse_response(mock_response) == "解读：公开内容"
+
     def test_401_unauthorized(self, client, mocker):
         """Test 401 Unauthorized error."""
         mock_error = urllib.error.HTTPError(

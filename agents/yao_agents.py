@@ -7,15 +7,17 @@ a specific aspect of the decision process.
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from core.errors import PartialFailureError
+from core.llm_filters import filter_think_content
 from core.models import HexagramContext, YaoAnalysis, YaoPosition
 
 
 def _parse_llm_response(response: str) -> dict[str, str]:
-    response = _filter_think_blocks(response)
+    response = filter_think_content(response)
 
     sections = {"解读": "", "建议": "", "风险": ""}
     current_section = None
@@ -44,61 +46,13 @@ def _parse_llm_response(response: str) -> dict[str, str]:
     return sections
 
 
-def _filter_think_blocks(response: str) -> str:
-    """Remove think/reasoning blocks from LLM response."""
-    import re
-
-    # Pattern 1: hlen content hlen (most common)
-    response = re.sub(
-        r"^hlen\s*\n(.*?\n)?hlen\s*$",
-        "",
-        response,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-
-    # Pattern 2: Inline hlen blocks
-    response = re.sub(
-        r"hlen\s*(.*?)\s*hlen",
-        "",
-        response,
-        flags=re.DOTALL,
-    )
-
-    # Pattern 3: Line-by-line cleanup for any remaining think markers
-    lines = response.split("\n")
-    result = []
-    in_think = False
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Start of think block
-        if stripped.lower() == "hlen" or "hlen" in stripped[:10].lower():
-            in_think = True
-            continue
-
-        # End of think block
-        if stripped.lower() == "hlen" or "hlen" in stripped[-10:].lower():
-            in_think = False
-            continue
-
-        # Skip lines inside think block
-        if in_think:
-            continue
-
-        # Skip standalone markers
-        if stripped.lower() in ["hlen", "hlen", "think", "|think|"]:
-            continue
-
-        result.append(line)
-
-    filtered = "\n".join(result)
-
-    # Debug
-    if len(filtered) < len(response):
-        print(f"[FILTER] {len(response)} -> {len(filtered)} chars")
-
-    return filtered
+def _brief_line_text(text: str, limit: int = 56) -> str:
+    """Return a compact line excerpt for local deterministic analysis."""
+    cleaned = text.split("【", 1)[0]
+    cleaned = " ".join(cleaned.split())
+    if len(cleaned) > limit:
+        return cleaned[:limit].rstrip() + "..."
+    return cleaned
 
 
 def build_system_prompt(position: YaoPosition) -> str:
@@ -203,14 +157,7 @@ class YaoAgent:
         yao_ci = line_data["yao_ci"]
 
         if self._llm_call is None:
-            return YaoAnalysis(
-                position=self.position.value,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis=f"[{self.position.fused_role}] 待 LLM 分析",
-                advice=f"[{self.position.role}] 待生成建议",
-                risks=f"[{self.position.traditional_meaning}] 待风险评估",
-            )
+            return self._generate_local_analysis(hexagram_context, line_name, yao_ci)
 
         user_prompt = self._build_user_prompt(hexagram_context, line_name, yao_ci)
         response = self._llm_call(self._system_prompt, user_prompt)
@@ -247,534 +194,86 @@ class YaoAgent:
         response: str,
     ) -> YaoAnalysis:
         sections = _parse_llm_response(response)
+        analysis = sections["解读"].strip()
+        advice = sections["建议"].strip()
+        risks = sections["风险"].strip()
+
+        if not analysis and not advice and not risks:
+            analysis = "模型回复未按结构化格式返回，已保留爻位与爻辞供综合报告参考。"
+            advice = "建议结合当前问题重新评估行动方案。"
+            risks = "需警惕模型回复格式异常带来的解读偏差。"
+
         return YaoAnalysis(
             position=position,
             line_name=line_name,
             yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
+            analysis=analysis,
+            advice=advice,
+            risks=risks,
         )
 
-
-class YaoAgent1:
-    """初爻 - 环境感知（潜龙勿用）"""
-
-    SYSTEM_PROMPT = """你是初爻分析官，对应基础环境层。
-
-传统含义：根本
-现代映射：环境感知
-融合角色：基础环境层 - 识别问题根本、环境基调
-
-你的任务是：
-1. 分析当前环境的基础条件
-2. 识别潜在的信号和趋势
-3. 评估是否适合行动
-
-记住"潜龙勿用"的智慧：时机未到时，宜静待而非冒进。"""
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.INITIAL
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=1,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[基础环境层] 待 LLM 分析",
-                advice="[环境感知] 待生成建议",
-                risks="[根本] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
+    def _generate_local_analysis(
         self,
         hexagram_context: HexagramContext,
         line_name: str,
         yao_ci: str,
-    ) -> str:
+    ) -> YaoAnalysis:
         question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从基础环境层的角度，分析当前环境的基础条件、潜在信号和行动时机。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
-        return YaoAnalysis(
-            position=1,
-            line_name=line_name,
-            yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
-        )
-
-
-class YaoAgent2:
-    """二爻 - 资源配置（见龙在田）"""
-
-    SYSTEM_PROMPT = """你是二爻分析官，对应内部资源层。
-
-传统含义：内中馈
-现代映射：资源配置
-融合角色：内部资源层 - 评估内部条件、资源匹配
-
-你的任务是：
-1. 评估现有资源是否充足
-2. 分析资源配置是否合理
-3. 识别资源缺口
-
-记住"见龙在田"的智慧：展现能力，寻求支持。"""
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.SECOND
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=2,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[内部资源层] 待 LLM 分析",
-                advice="[资源配置] 待生成建议",
-                risks="[内中馈] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
-        self,
-        hexagram_context: HexagramContext,
-        line_name: str,
-        yao_ci: str,
-    ) -> str:
-        question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从内部资源层的角度，评估现有资源的充足性、配置合理性及资源缺口。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
-        return YaoAnalysis(
-            position=2,
-            line_name=line_name,
-            yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
-        )
-
-
-class YaoAgent3:
-    """三爻 - 风险评估（君子终日乾乾）"""
-
-    SYSTEM_PROMPT = """你是三爻分析官，对应行动执行层。
-
-传统含义：君子终日乾乾
-现代映射：风险评估
-融合角色：行动执行层 - 行动中的风险与努力
-
-你的任务是：
-1. 识别行动中的潜在风险
-2. 评估风险等级和影响
-3. 提供谨慎的行动建议
-
-记住"君子终日乾乾"的智慧：白天勤奋努力，夜晚警惕反省。"""
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.THIRD
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=3,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[行动执行层] 待 LLM 分析",
-                advice="[风险评估] 待生成建议",
-                risks="[君子终日乾乾] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
-        self,
-        hexagram_context: HexagramContext,
-        line_name: str,
-        yao_ci: str,
-    ) -> str:
-        question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从行动执行层的角度，识别潜在风险、评估风险等级并提供谨慎的行动建议。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
-        return YaoAnalysis(
-            position=3,
-            line_name=line_name,
-            yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
-        )
-
-
-class YaoAgent4:
-    """四爻 - 策略执行（或跃在渊）"""
-
-    SYSTEM_PROMPT = """你是四爻分析官，对应关键转折层。
-
-传统含义：门阙
-现代映射：策略执行
-融合角色：关键转折层 - 决策关键点、策略调整
-
-你的任务是：
-1. 识别关键决策点
-2. 评估进退策略
-3. 提供灵活的行动建议
-
-记住"或跃在渊"的智慧：可进可退，审时度势。"""
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.FOURTH
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=4,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[关键转折层] 待 LLM 分析",
-                advice="[策略执行] 待生成建议",
-                risks="[门阙] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
-        self,
-        hexagram_context: HexagramContext,
-        line_name: str,
-        yao_ci: str,
-    ) -> str:
-        question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从关键转折层的角度，识别关键决策点、评估进退策略并提供灵活的行动建议。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
-        return YaoAnalysis(
-            position=4,
-            line_name=line_name,
-            yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
-        )
-
-
-class YaoAgent5:
-    """五爻 - 长期规划（飞龙在天）"""
-
-    SYSTEM_PROMPT = """你是五爻分析官，对应核心决策层。
-
-传统含义：君位
-现代映射：长期规划
-融合角色：核心决策层 - 主导方向、长远影响
-
-你的任务是：
-1. 制定长期战略方向
-2. 评估决策的长远影响
-3. 提供核心决策建议
-
-记住"飞龙在天"的智慧：居高临下，把握大局。"""
-
-    @property
-    def system_prompt(self) -> str:
-        return self.SYSTEM_PROMPT
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.FIFTH
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=5,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[核心决策层] 待 LLM 分析",
-                advice="[长期规划] 待生成建议",
-                risks="[君位] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
-        self,
-        hexagram_context: HexagramContext,
-        line_name: str,
-        yao_ci: str,
-    ) -> str:
-        question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从核心决策层的角度，制定长期战略方向、评估决策的长远影响并提供核心决策建议。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
-        return YaoAnalysis(
-            position=5,
-            line_name=line_name,
-            yao_ci=yao_ci,
-            analysis=sections["解读"].strip() or response.strip(),
-            advice=sections["建议"].strip() or "",
-            risks=sections["风险"].strip() or "",
-        )
-
-
-class YaoAgent6:
-    """上爻 - 结果复盘（亢龙有悔）"""
-
-    SYSTEM_PROMPT = """你是上爻分析官，对应终局反思层。
-
-传统含义：亢龙有悔
-现代映射：结果复盘
-融合角色：终局反思层 - 极端情况、反思总结
-
-你的任务是：
-1. 评估极端情况的风险
-2. 提供反思和警示
-3. 总结经验和教训
-
-记住"亢龙有悔"的智慧：物极必反，适可而止。"""
-
-    def __init__(self, config: YaoAgentConfig):
-        self.position = YaoPosition.TOP
-        self._config = config
-        self._llm_call = config.llm_call
-
-    def analyze(
-        self,
-        hexagram_context: HexagramContext,
-        line_data: dict[str, Any],
-    ) -> YaoAnalysis:
-        required_fields = ["line_name", "yao_ci"]
-        missing = [f for f in required_fields if f not in line_data]
-        if missing:
-            raise ValueError(f"Missing required fields: {missing}")
-
-        line_name = line_data["line_name"]
-        yao_ci = line_data["yao_ci"]
-
-        if self._llm_call is None:
-            return YaoAnalysis(
-                position=6,
-                line_name=line_name,
-                yao_ci=yao_ci,
-                analysis="[终局反思层] 待 LLM 分析",
-                advice="[结果复盘] 待生成建议",
-                risks="[亢龙有悔] 待风险评估",
-            )
-
-        prompt = self._build_prompt(hexagram_context, line_name, yao_ci)
-        response = self._llm_call(self.SYSTEM_PROMPT, prompt)
-        return self._parse_response(line_name, yao_ci, response)
-
-    def _build_prompt(
-        self,
-        hexagram_context: HexagramContext,
-        line_name: str,
-        yao_ci: str,
-    ) -> str:
-        question = hexagram_context.question
-        return f"""用户问题：{question.raw_question}
-问题类型：{question.question_type}
-背景：{question.background}
-约束：{question.constraints}
-期望结果：{question.expected_outcome}
-时间范围：{question.time_horizon}
-风险承受：{question.risk_tolerance}
-
-卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
-爻位：{line_name}
-爻辞：{yao_ci}
-
-请从终局反思层的角度，评估极端情况的风险、提供反思警示并总结经验教训。"""
-
-    def _parse_response(
-        self,
-        line_name: str,
-        yao_ci: str,
-        response: str,
-    ) -> YaoAnalysis:
-        sections = _parse_llm_response(response)
+        hexagram_name = hexagram_context.hexagram_name
+        subject = question.raw_question
+        brief_yao_ci = _brief_line_text(yao_ci)
+        templates = {
+            YaoPosition.INITIAL: (
+                "从{role}看，{hexagram}提醒先确认问题的根本条件。"
+                "对于“{subject}”，当前重点是看清外部环境、真实约束和起步位置。",
+                "先写下必须满足的前置条件，再决定是否推进。",
+                "主要风险：环境判断不足，容易把愿望当作现实条件。",
+            ),
+            YaoPosition.SECOND: (
+                "从{role}看，{hexagram}要求盘点可用资源。"
+                "爻辞“{yao_ci}”提示要把人、钱、时间和支持者放到同一张表里评估。",
+                "优先确认最关键的一项资源是否稳定，再安排下一步。",
+                "主要风险：资源分散或承诺不清，导致执行中途失速。",
+            ),
+            YaoPosition.THIRD: (
+                "从{role}看，{hexagram}强调行动前的风险校验。"
+                "爻辞“{yao_ci}”提醒推进时要保持警觉，避免只看到机会。",
+                "把最坏情况、止损线和复盘节点提前写清楚。",
+                "主要风险：过度自信、节奏过急，或忽略连续投入带来的压力。",
+            ),
+            YaoPosition.FOURTH: (
+                "从{role}看，{hexagram}关注关键转折点。"
+                "这一步不只是做或不做，而是判断何时进、何时退、何时调整策略。",
+                "设计一个小规模试点，用真实反馈决定是否扩大投入。",
+                "主要风险：没有阶段门，导致该调整时继续硬推。",
+            ),
+            YaoPosition.FIFTH: (
+                "从{role}看，{hexagram}要求把短期选择放进长期方向里审视。"
+                "判断这件事是否强化您的核心能力、关系网络和长期位置。",
+                "选择一个能积累复利的主方向，避免被短期收益牵着走。",
+                "主要风险：只看眼前结果，忽略长期机会成本。",
+            ),
+            YaoPosition.TOP: (
+                "从{role}看，{hexagram}提醒关注终局和过度扩张。"
+                "爻辞“{yao_ci}”适合用来检查成功后、失败后以及极端情况下的后果。",
+                "提前设定退出条件、复盘时间和纠偏动作。",
+                "主要风险：走到极端后才意识到成本过高，回旋空间变小。",
+            ),
+        }
+        analysis, advice, risks = templates[self.position]
 
         return YaoAnalysis(
-            position=6,
+            position=self.position.value,
             line_name=line_name,
             yao_ci=yao_ci,
-            analysis=sections["解读"] or response,
-            advice=sections["建议"] or "待补充",
-            risks=sections["风险"] or "待补充",
+            analysis=analysis.format(
+                role=self.position.fused_role,
+                hexagram=hexagram_name,
+                subject=subject,
+                yao_ci=brief_yao_ci,
+            ),
+            advice=advice,
+            risks=risks,
         )
 
 
@@ -782,48 +281,14 @@ class YaoAgentOrchestrator:
     def __init__(
         self,
         llm_call: Optional[Callable[[str, str], str]] = None,
+        max_workers: int = 6,
     ):
         self._llm_call = llm_call
+        self._max_workers = max_workers
         self._agents = {
-            YaoPosition.INITIAL: YaoAgent1(
-                YaoAgentConfig(position=YaoPosition.INITIAL, llm_call=llm_call)
-            ),
-            YaoPosition.SECOND: YaoAgent2(
-                YaoAgentConfig(position=YaoPosition.SECOND, llm_call=llm_call)
-            ),
-            YaoPosition.THIRD: YaoAgent3(
-                YaoAgentConfig(position=YaoPosition.THIRD, llm_call=llm_call)
-            ),
-            YaoPosition.FOURTH: YaoAgent4(
-                YaoAgentConfig(position=YaoPosition.FOURTH, llm_call=llm_call)
-            ),
-            YaoPosition.FIFTH: YaoAgent5(
-                YaoAgentConfig(position=YaoPosition.FIFTH, llm_call=llm_call)
-            ),
-            YaoPosition.TOP: YaoAgent6(
-                YaoAgentConfig(position=YaoPosition.TOP, llm_call=llm_call)
-            ),
+            pos: YaoAgent(YaoAgentConfig(position=pos, llm_call=llm_call))
+            for pos in YaoPosition
         }
-
-    def _create_llm_call(self, config: YaoAgentConfig) -> Callable[[str, str], str]:
-        """Create LLM call function for a specific provider/model.
-
-        Args:
-            config: YaoAgentConfig with provider/model
-
-        Returns:
-            LLM call function
-        """
-
-        # Placeholder - actual implementation depends on core.llm_client
-        # This method should be overridden or configured externally
-        def llm_call(system_prompt: str, user_prompt: str) -> str:
-            raise NotImplementedError(
-                f"LLM call not configured for {config.provider}/{config.model}. "
-                "Configure llm_call in YaoAgentConfig or use from_models_config."
-            )
-
-        return llm_call
 
     def analyze_all(
         self,
@@ -855,40 +320,47 @@ class YaoAgentOrchestrator:
         failed_positions: list[int] = []
         successful_positions: list[int] = []
 
-        for i, pos in enumerate(YaoPosition):
-            print(f"[3/4] 分析六爻中 ({i + 1}/6)...")
-            if i >= len(lines):
-                failed_positions.append(pos.value)
-                continue
-
-            line_data_item = lines[i]
+        def analyze_position(index: int, pos: YaoPosition) -> YaoAnalysis:
+            line_data_item = lines[index]
             if not isinstance(line_data_item, dict):
                 line_data_item = {
                     "line_name": f"第{pos.name_cn}",
                     "yao_ci": str(line_data_item),
                 }
 
-            try:
-                # Create agent-specific config if models_config provided
-                if models_config:
-                    yao_config = YaoAgentConfig.from_models_config(
-                        models_config, pos.value
-                    )
-                    # Use shared llm_call if available, otherwise use placeholder
-                    if self._llm_call:
-                        yao_config.llm_call = self._llm_call
-                    agent = YaoAgent(yao_config)
-                else:
-                    # Fallback to shared config
-                    agent = self._agents[pos]
+            # Create agent-specific config if models_config provided.
+            if models_config:
+                yao_config = YaoAgentConfig.from_models_config(models_config, pos.value)
+                if self._llm_call:
+                    yao_config.llm_call = self._llm_call
+                agent = YaoAgent(yao_config)
+            else:
+                agent = self._agents[pos]
 
-                results[pos.value] = agent.analyze(hexagram_context, line_data_item)
-                successful_positions.append(pos.value)
-            except (ValueError, KeyError, TypeError) as e:
-                failed_positions.append(pos.value)
+            return agent.analyze(hexagram_context, line_data_item)
+
+        futures = {}
+        with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
+            for i, pos in enumerate(YaoPosition):
+                print(f"[3/4] 分析六爻中 ({i + 1}/6)...")
+                if i >= len(lines):
+                    failed_positions.append(pos.value)
+                    continue
+                futures[executor.submit(analyze_position, i, pos)] = pos
+
+            for future in as_completed(futures):
+                pos = futures[future]
+                try:
+                    results[pos.value] = future.result()
+                    successful_positions.append(pos.value)
+                except Exception:
+                    failed_positions.append(pos.value)
 
         if not successful_positions:
             raise ValueError("All yao position analyses failed")
+
+        failed_positions.sort()
+        successful_positions.sort()
 
         if failed_positions:
             raise PartialFailureError(

@@ -603,6 +603,7 @@ class TestReporterEdgeCases:
         assert report.overall_advice is not None
         assert "待补充" not in report.overall_advice
         assert "待定" not in report.overall_advice
+        assert "。。" not in report.overall_advice
         assert len(report.overall_advice) > 20
 
         assert report.key_risks is not None
@@ -619,3 +620,37 @@ class TestReporterEdgeCases:
         assert "步骤 1" not in str(report.next_steps)
 
         assert "乾为天" in report.overall_advice or "第 1 卦" in report.overall_advice
+
+    def test_local_fallback_normalizes_advice_punctuation(self):
+        agent = ReporterAgent(ReporterConfig(include_hu_gua=False))
+        question = QuestionContext(
+            raw_question="测试问题",
+            question_type="创业",
+            background="背景",
+            constraints="约束",
+            expected_outcome="期望",
+            time_horizon="中期",
+            risk_tolerance="中",
+        )
+        hexagram = HexagramContext(
+            question=question,
+            hexagram_id=3,
+            hexagram_name="屯",
+            match_reason="测试",
+            hexagram_data={"lines": []},
+        )
+        yao_analyses = [
+            YaoAnalysis(
+                position=i,
+                line_name=f"第{i}爻",
+                yao_ci=f"爻辞{i}",
+                analysis=f"分析{i}",
+                advice=f"建议{i}。",
+                risks=f"风险{i}。",
+            )
+            for i in range(1, 7)
+        ]
+
+        report = agent.generate_report(question, hexagram, yao_analyses)
+
+        assert "。。" not in report.overall_advice

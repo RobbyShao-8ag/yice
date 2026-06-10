@@ -72,6 +72,7 @@ def setup_logging(
     log_file: Optional[str] = None,
     json_format: bool = False,
     sensitive_fields: Optional[list[str]] = None,
+    console_level: Optional[str] = None,
 ) -> logging.Logger:
     """Setup logging configuration.
 
@@ -80,6 +81,7 @@ def setup_logging(
         log_file: Optional file path for file handler
         json_format: Use JSON format (True) or text format (False)
         sensitive_fields: Fields to redact (e.g., ['api_key', 'password'])
+        console_level: Optional console log level. Defaults to level.
 
     Returns:
         Configured root logger
@@ -89,7 +91,7 @@ def setup_logging(
     root_logger.handlers.clear()
 
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
+    console_handler.setLevel(console_level or level)
 
     if json_format:
         console_handler.setFormatter(JSONFormatter())

@@ -23,14 +23,14 @@
 git clone https://github.com/RobbyShao-8ag/yice.git
 cd yice
 python main.py
-# 直接运行，无需任何安装！
+# 直接运行；没有 API Key 时会进入本地演示模式
 ```
 
 **Web版本（需要安装后端依赖）：**
 ```bash
-cd yice/web/backend
-pip install -r requirements.txt
-python main.py
+cd yice
+./setup.sh
+python web/main.py
 ```
 
 #### 开发流程
@@ -49,13 +49,13 @@ python main.py
    pip install pytest
 
    # 运行所有测试
-   pytest tests/
+   python -m pytest tests/ -v
 
-   # 只运行核心模块测试
-   pytest tests/core/ tests/agents/
+   # 只运行核心路径测试
+   python -m pytest tests/test_cli.py tests/test_pipeline.py tests/test_yao_agents.py -v
 
    # 带覆盖率报告
-   pytest tests/ --cov=. --cov-report=term-missing
+   python -m pytest tests/ --cov=. --cov-report=term-missing
    ```
 5. **提交** → 提交信息要清晰描述改动
    ```bash
@@ -100,13 +100,13 @@ python main.py
 
 ```bash
 # 运行所有测试
-pytest tests/
+python -m pytest tests/ -v
 
-# 只运行核心模块测试
-pytest tests/core/ tests/agents/
+# 只运行核心路径测试
+python -m pytest tests/test_cli.py tests/test_pipeline.py tests/test_yao_agents.py -v
 
 # 带覆盖率报告
-pytest tests/ --cov=. --cov-report=term-missing
+python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 测试文件在 `tests/` 目录下，使用 **pytest** 框架。

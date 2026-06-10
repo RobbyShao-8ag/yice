@@ -20,24 +20,23 @@ _ID_TO_BINARY = None
 def _load_hexagrams() -> dict:
     """Load hexagrams data from JSON."""
     global _hexagrams_data, _BINARY_TO_ID, _ID_TO_BINARY
-    
+
     if _hexagrams_data is not None:
         return _hexagrams_data
-    
+
     data_file = Path(__file__).parent.parent / "data/hexagrams.json"
     with open(data_file, "r", encoding="utf-8") as f:
         _hexagrams_data = json.load(f)
-    
+
     # Build lookup tables
-    global _BINARY_TO_ID, _ID_TO_BINARY
     _BINARY_TO_ID = {}
     _ID_TO_BINARY = {}
-    
+
     for hex_id in range(1, 65):
         binary = tuple(_hexagrams_data[str(hex_id)]["binary_code"])
         _BINARY_TO_ID[binary] = hex_id
         _ID_TO_BINARY[hex_id] = list(binary)
-    
+
     return _hexagrams_data
 
 

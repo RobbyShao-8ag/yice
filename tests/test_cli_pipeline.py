@@ -76,6 +76,17 @@ class TestFullPipelineWithMockLLM:
         assert question_ctx.raw_question == "我想换工作"
         assert question_ctx.question_type is not None
 
+    def test_local_question_context_detects_product_startup_signals(self):
+        """Test local parsing recognizes product/runway/customer startup wording."""
+        from main import build_question_context
+
+        question_ctx = build_question_context(
+            "我有一个AI工具原型和两个试用客户，但现金流只能支撑4个月，现在是否应该全职投入？",
+            None,
+        )
+
+        assert question_ctx.question_type == "创业"
+
     def test_scene_router_returns_hexagram(self, data_loader, mock_llm):
         """Test SceneRouter returns valid HexagramContext."""
         question_ctx = QuestionContext(
@@ -285,3 +296,67 @@ class TestPipelineProgressIndicators:
         assert "[2/4]" in captured.out
         assert "[3/4]" in captured.out
         assert "[4/4]" in captured.out
+
+    def test_local_question_parse_progress_message_without_qigua(self, capsys):
+        """Test fallback pipeline message does not claim multi-turn dialogue."""
+        from main import run_pipeline
+
+        data_loader = DataLoader(DataLoaderConfig(data_dir="data"))
+        run_pipeline("我想换工作", data_loader, llm_call=None, use_qigua=False)
+
+        captured = capsys.readouterr()
+        assert "[1/4] 本地问题解析中..." in captured.out
+        assert "[1/4] 起卦官对话中..." not in captured.out
+
+
+class TestCLIReportFormatting:
+    def test_print_report_compacts_long_yao_text(self, capsys):
+        """Test console report keeps long source line text readable."""
+        from main import print_report
+        from core.models import DecisionReport, HexagramContext, QuestionContext, YaoAnalysis
+
+        question = QuestionContext(
+            raw_question="测试问题",
+            question_type="创业",
+            background="背景",
+            constraints="约束",
+            expected_outcome="期望",
+            time_horizon="短期",
+            risk_tolerance="中",
+        )
+        hexagram = HexagramContext(
+            question=question,
+            hexagram_id=3,
+            hexagram_name="屯",
+            match_reason="测试",
+            hexagram_data={"lines": []},
+        )
+        report = DecisionReport(
+            question=question,
+            hexagram=hexagram,
+            yao_analyses=[
+                YaoAnalysis(
+                    position=1,
+                    line_name="初九",
+                    yao_ci=(
+                        "Hesitation and hindrance.\n"
+                        "It furthers one to remain persevering.\n\n"
+                        "【Wilhelm解读】A very long explanation should not flood "
+                        "the interactive console output."
+                    ),
+                    analysis="分析",
+                    advice="建议",
+                    risks="风险",
+                )
+            ],
+            overall_advice="综合建议",
+            key_risks="关键风险",
+            timing_judgment="时机判断",
+            next_steps=["下一步"],
+        )
+
+        print_report(report)
+
+        output = capsys.readouterr().out
+        assert "【Wilhelm解读】" not in output
+        assert "Hesitation and hindrance. It furthers one" in output

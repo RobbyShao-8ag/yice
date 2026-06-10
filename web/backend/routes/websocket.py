@@ -10,10 +10,25 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from core.llm_client import load_config
 from core.models import QuestionContext
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+MAX_WEBSOCKET_MESSAGE_BYTES = 128 * 1024
+
+
+class WebSocketMessageTooLarge(ValueError):
+    """Raised when a WebSocket message exceeds the configured size limit."""
+
+
+def parse_websocket_message(data: str) -> dict[str, Any]:
+    """Parse a WebSocket JSON message with a size limit."""
+    if len(data.encode("utf-8")) > MAX_WEBSOCKET_MESSAGE_BYTES:
+        raise WebSocketMessageTooLarge(
+            f"WebSocket message exceeds {MAX_WEBSOCKET_MESSAGE_BYTES} bytes"
+        )
+    return json.loads(data)
 
 
 def get_yao_name(position: int, binary_code: list[int]) -> str:
@@ -36,6 +51,23 @@ def get_yao_name(position: int, binary_code: list[int]) -> str:
         return f"{numeral}{positions[position - 2]}"
 
 
+def format_yao_ci_for_display(yao_ci: str) -> str:
+    """Return concise yao text suitable for the UI badge."""
+    if not yao_ci:
+        return ""
+
+    text = yao_ci.split("【Wilhelm解读】", 1)[0].strip()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    summary = " ".join(lines)
+    max_length = 80
+    if len(summary) > max_length:
+        return summary[:max_length].rstrip() + "..."
+    return summary
+
+
 # Load models configuration
 MODELS_CONFIG_PATH = project_root / "models.json"
 _models_config = None
@@ -46,8 +78,7 @@ def load_models_config() -> dict:
     global _models_config
     if _models_config is None:
         try:
-            with open(MODELS_CONFIG_PATH, "r", encoding="utf-8") as f:
-                _models_config = json.load(f)
+            _models_config = load_config(str(MODELS_CONFIG_PATH))
             logger.info(f"Loaded models config from {MODELS_CONFIG_PATH}")
         except Exception as e:
             logger.error(f"Failed to load models config: {e}")
@@ -71,6 +102,9 @@ class DialogueSession:
     last_question: str = ""
     last_options: list[str] = field(default_factory=list)
     last_field: str = ""
+    agent_bridge: Any = None
+    llm_call: Optional[Callable[[str, str], str]] = None
+    qigua_agent: Any = None
 
 
 class ConnectionManager:
@@ -79,18 +113,21 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
         self.sessions: dict[WebSocket, DialogueSession] = {}
+        self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
-        self.sessions[websocket] = DialogueSession(websocket=websocket)
+        async with self._lock:
+            self.active_connections.append(websocket)
+            self.sessions[websocket] = DialogueSession(websocket=websocket)
         logger.info(f"WebSocket connected: {websocket.client}")
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-        if websocket in self.sessions:
-            del self.sessions[websocket]
+    async def disconnect(self, websocket: WebSocket):
+        async with self._lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
+            if websocket in self.sessions:
+                del self.sessions[websocket]
         logger.info(f"WebSocket disconnected: {websocket.client}")
 
     def get_session(self, websocket: WebSocket) -> Optional[DialogueSession]:
@@ -99,9 +136,11 @@ class ConnectionManager:
 
     async def broadcast(self, message: dict[str, Any]):
         """Broadcast message to all connected clients."""
-        if self.active_connections:
+        async with self._lock:
+            connections = list(self.active_connections)
+        if connections:
             data = json.dumps(message, ensure_ascii=False)
-            for connection in self.active_connections:
+            for connection in connections:
                 await connection.send_text(data)
 
     async def send_personal(self, websocket: WebSocket, message: dict[str, Any]):
@@ -111,6 +150,29 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+
+
+def _get_session_bridge(session: DialogueSession) -> Any:
+    if session.agent_bridge is None:
+        from services.agent_bridge import AgentBridgeService
+
+        bridge = AgentBridgeService()
+        bridge.initialize(load_models_config())
+        session.agent_bridge = bridge
+    return session.agent_bridge
+
+
+def _get_session_qigua_agent(session: DialogueSession) -> Any:
+    if session.qigua_agent is None:
+        from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
+
+        bridge = _get_session_bridge(session)
+        session.llm_call = bridge.create_llm_call()
+        if session.llm_call:
+            session.qigua_agent = QiguaAgent(
+                QiguaAgentConfig(llm_call=session.llm_call, max_rounds=6)
+            )
+    return session.qigua_agent
 
 
 def parse_answer(answer: str, options: list[str]) -> str:
@@ -370,7 +432,7 @@ async def websocket_agent(websocket: WebSocket):
     try:
         while not session.is_complete:
             data = await websocket.receive_text()
-            message = json.loads(data)
+            message = parse_websocket_message(data)
 
             if message.get("type") == "user_message":
                 content = message.get("content", "")
@@ -393,23 +455,10 @@ async def websocket_agent(websocket: WebSocket):
 
                     logger.info(f"Dialogue started with question: {content[:100]}")
 
-                    # Initialize agent and llm_call for first question generation
+                    # Initialize agent once per WebSocket session.
                     agent = None
-                    llm_call = None
                     try:
-                        from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
-                        from services.agent_bridge import AgentBridgeService
-
-                        # Get LLM call from bridge with config
-                        bridge = AgentBridgeService()
-                        models_config = load_models_config()
-                        bridge.initialize(models_config)
-                        llm_call = bridge.create_llm_call()
-
-                        if llm_call:
-                            agent = QiguaAgent(
-                                QiguaAgentConfig(llm_call=llm_call, max_rounds=6)
-                            )
+                        agent = _get_session_qigua_agent(session)
                     except Exception as e:
                         logger.warning(
                             f"Failed to initialize agent for first question: {e}"
@@ -501,23 +550,10 @@ async def websocket_agent(websocket: WebSocket):
                     f"[DEBUG] Round {session.current_round}: dialogue_history length = {len(session.dialogue_history)}"
                 )
 
-                # Initialize agent and llm_call for sufficiency check
+                # Reuse session-level agent for sufficiency check.
                 agent = None
-                llm_call = None
                 try:
-                    from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
-                    from services.agent_bridge import AgentBridgeService
-
-                    # Get LLM call from bridge with config
-                    bridge = AgentBridgeService()
-                    models_config = load_models_config()
-                    bridge.initialize(models_config)
-                    llm_call = bridge.create_llm_call()
-
-                    if llm_call:
-                        agent = QiguaAgent(
-                            QiguaAgentConfig(llm_call=llm_call, max_rounds=6)
-                        )
+                    agent = _get_session_qigua_agent(session)
                 except Exception as e:
                     logger.warning(
                         f"Failed to initialize agent for sufficiency check: {e}"
@@ -583,47 +619,8 @@ async def websocket_agent(websocket: WebSocket):
 
                 # Generate next question using QiguaAgent logic
                 try:
-                    from pathlib import Path
-                    import sys
-
-                    project_root = Path(__file__).parent.parent.parent.parent
-                    sys.path.insert(0, str(project_root))
-
-                    from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
-                    from services.agent_bridge import AgentBridgeService
-
-                    # Get LLM call from bridge with config
-                    bridge = AgentBridgeService()
-                    models_config = load_models_config()
-                    bridge.initialize(models_config)
-                    llm_call = bridge.create_llm_call()
-
-                    if llm_call:
-                        # Use QiguaAgent to generate next question
-                        agent = QiguaAgent(
-                            QiguaAgentConfig(llm_call=llm_call, max_rounds=6)
-                        )
-
-                        # Build temporary context for analysis
-                        temp_ctx = QuestionContext(
-                            raw_question=session.raw_question,
-                            question_type=session.question_type,
-                            background=session.extra_context.get("background", ""),
-                            constraints=session.extra_context.get("constraints", ""),
-                            expected_outcome=session.extra_context.get(
-                                "expected_outcome", ""
-                            ),
-                            time_horizon=session.extra_context.get(
-                                "time_horizon", "中期"
-                            ),
-                            risk_tolerance=session.extra_context.get(
-                                "risk_tolerance", "中"
-                            ),
-                            is_complete=False,
-                            dialogue_history=session.dialogue_history,
-                            extra_context=session.extra_context,
-                        )
-
+                    agent = _get_session_qigua_agent(session)
+                    if agent:
                         # DEBUG: Log context before generating next question
                         logger.info(
                             f"[DEBUG] Generating next question with context: {session.extra_context}"
@@ -686,18 +683,22 @@ async def websocket_agent(websocket: WebSocket):
                 await manager.send_personal(websocket, error_response)
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON received: {e}")
         await manager.send_personal(
             websocket, {"type": "error", "message": "无效的 JSON 格式"}
+        )
+    except WebSocketMessageTooLarge:
+        await manager.send_personal(
+            websocket, {"type": "error", "message": "消息过大，请缩短输入内容"}
         )
     except Exception as e:
         logger.error(f"Agent WebSocket error: {e}")
         await manager.send_personal(
             websocket, {"type": "error", "message": f"服务器错误：{str(e)}"}
         )
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
 
 
 @router.websocket("/divination")
@@ -712,10 +713,11 @@ async def websocket_divination(websocket: WebSocket):
     - Server → Client: {"type": "all_complete", "report": {...}}
     """
     await manager.connect(websocket)
+    session = manager.get_session(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            message = json.loads(data)
+            message = parse_websocket_message(data)
 
             if message.get("type") == "start_divination":
                 question_context = message.get("question_context", {})
@@ -725,13 +727,11 @@ async def websocket_divination(websocket: WebSocket):
 
                 try:
                     # Import and run the decision pipeline
-                    from services.agent_bridge import AgentBridgeService
                     from core.models import QuestionContext
 
-                    # Initialize bridge service with config
-                    bridge = AgentBridgeService()
-                    models_config = load_models_config()
-                    bridge.initialize(models_config)
+                    if not session:
+                        raise RuntimeError("无法创建推演会话")
+                    bridge = _get_session_bridge(session)
 
                     # Convert dict to QuestionContext with defaults for missing fields
                     if isinstance(question_context, dict):
@@ -849,18 +849,22 @@ async def websocket_divination(websocket: WebSocket):
                 await manager.send_personal(websocket, error_response)
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON received: {e}")
         await manager.send_personal(
             websocket, {"type": "error", "message": "无效的 JSON 格式"}
+        )
+    except WebSocketMessageTooLarge:
+        await manager.send_personal(
+            websocket, {"type": "error", "message": "消息过大，请缩短输入内容"}
         )
     except Exception as e:
         logger.error(f"Divination WebSocket error: {e}")
         await manager.send_personal(
             websocket, {"type": "error", "message": f"服务器错误：{str(e)}"}
         )
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
 
 
 async def _run_yao_divination(
@@ -932,13 +936,9 @@ async def _run_yao_divination(
             return
 
         yao_orchestrator = YaoAgentOrchestrator(llm_call=llm_call)
-        yao_analyses = []
 
-        for i, pos in enumerate(YaoPosition):
-            if i >= len(lines):
-                continue
-
-            line_data_item = lines[i]
+        async def analyze_one_yao(index: int, pos: YaoPosition) -> YaoAnalysis:
+            line_data_item = lines[index]
             if not isinstance(line_data_item, dict):
                 line_data_item = {
                     "line_name": get_yao_name(pos.value, binary_code),
@@ -957,7 +957,6 @@ async def _run_yao_divination(
                 },
             )
 
-            # Send thinking indicator
             await manager.send_personal(
                 websocket,
                 {
@@ -971,13 +970,12 @@ async def _run_yao_divination(
             try:
                 agent = yao_orchestrator.get_agent(pos)
                 line_data_item["line_name"] = correct_yao_name
-                yao_analysis = await asyncio.to_thread(
+                return await asyncio.to_thread(
                     agent.analyze, hexagram_ctx, line_data_item
                 )
-                yao_analyses.append(yao_analysis)
             except Exception as e:
                 logger.error(f"Error analyzing yao {pos.value}: {e}")
-                yao_analysis = YaoAnalysis(
+                return YaoAnalysis(
                     position=pos.value,
                     line_name=correct_yao_name,
                     yao_ci=line_data_item.get("yao_ci", ""),
@@ -985,21 +983,35 @@ async def _run_yao_divination(
                     advice="请稍后重试",
                     risks="分析过程中出现错误",
                 )
-                yao_analyses.append(yao_analysis)
 
-            # Send yao complete immediately after analysis
+        yao_tasks = [
+            asyncio.create_task(analyze_one_yao(i, pos))
+            for i, pos in enumerate(YaoPosition)
+            if i < len(lines)
+        ]
+        yao_analyses_by_position: dict[int, YaoAnalysis] = {}
+
+        for completed_task in asyncio.as_completed(yao_tasks):
+            yao_analysis = await completed_task
+            yao_analyses_by_position[yao_analysis.position] = yao_analysis
             await manager.send_personal(
                 websocket,
                 {
                     "type": "yao_complete",
                     "position": yao_analysis.position,
-                    "line_name": correct_yao_name,
-                    "yao_ci": yao_analysis.yao_ci,
+                    "line_name": yao_analysis.line_name,
+                    "yao_ci": format_yao_ci_for_display(yao_analysis.yao_ci),
                     "analysis": yao_analysis.analysis,
                     "advice": yao_analysis.advice,
                     "risks": yao_analysis.risks,
                 },
             )
+
+        yao_analyses = [
+            yao_analyses_by_position[pos.value]
+            for pos in YaoPosition
+            if pos.value in yao_analyses_by_position
+        ]
 
         # Send yao complete
         await manager.send_personal(
@@ -1028,7 +1040,7 @@ async def _run_yao_divination(
             {
                 "position": ya.position,
                 "line_name": ya.line_name,
-                "yao_ci": ya.yao_ci,
+                "yao_ci": format_yao_ci_for_display(ya.yao_ci),
                 "brief": ya.analysis[:100] + "..."
                 if len(ya.analysis) > 100
                 else ya.analysis,

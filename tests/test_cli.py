@@ -4,6 +4,7 @@ CLI tests for main.py - command line interface testing.
 
 import subprocess
 import sys
+import os
 import pytest
 
 
@@ -109,3 +110,57 @@ class TestCLIInterrupt:
         )
         assert result.returncode == 0
         assert "再见" in result.stdout
+
+
+class TestCLILocalDemoMode:
+    def test_missing_models_config_starts_local_demo_mode(self, tmp_path):
+        missing_config = tmp_path / "missing-models.json"
+        env = os.environ.copy()
+        env["YICE_MODELS_CONFIG"] = str(missing_config)
+
+        result = subprocess.run(
+            [sys.executable, "main.py"],
+            input="quit\n",
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=env,
+        )
+
+        assert result.returncode == 0
+        assert "本地演示模式" in result.stdout
+        assert "无需 API Key" in result.stdout
+        assert "core.data_loader - INFO" not in result.stdout
+
+    def test_placeholder_models_config_starts_local_demo_mode(self, tmp_path):
+        config_path = tmp_path / "models.json"
+        config_path.write_text(
+            """{
+  "providers": {
+    "deepseek": {
+      "api_key": "your-api-key-here",
+      "base_url": "https://api.deepseek.com",
+      "default_model": "deepseek-v4-flash"
+    }
+  },
+  "agents": {
+    "scene_router": {"provider": "deepseek", "model": "deepseek-v4-flash"}
+  }
+}""",
+            encoding="utf-8",
+        )
+        env = os.environ.copy()
+        env["YICE_MODELS_CONFIG"] = str(config_path)
+
+        result = subprocess.run(
+            [sys.executable, "main.py"],
+            input="quit\n",
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=env,
+        )
+
+        assert result.returncode == 0
+        assert "配置未启用" in result.stdout
+        assert "本地演示模式" in result.stdout

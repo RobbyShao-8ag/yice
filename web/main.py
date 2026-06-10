@@ -13,6 +13,8 @@
 环境变量:
     YICE_BACKEND_PORT: 后端端口 (默认：8000)
     YICE_FRONTEND_PORT: 前端端口 (默认：5173)
+    YICE_BACKEND_HOST: 后端监听地址 (默认：127.0.0.1)
+    YICE_FRONTEND_HOST: 前端监听地址 (默认：127.0.0.1)
     YICE_NO_OPEN: 不自动打开浏览器
 """
 
@@ -39,6 +41,51 @@ def get_frontend_path() -> Path:
     return Path(__file__).parent / "frontend"
 
 
+def get_backend_python(backend_path: Path) -> Path:
+    """Return the backend venv Python executable path."""
+    candidates = [
+        backend_path / "venv" / "bin" / "python",
+        backend_path / "venv" / "Scripts" / "python.exe",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        "未找到后端虚拟环境中的 Python 解释器。请重新运行 ./setup.sh，"
+        "或手动执行：cd web/backend && rm -rf venv && python3 -m venv venv "
+        "&& source venv/bin/activate && pip install -r requirements.txt"
+    )
+
+
+def build_backend_command(venv_python: Path, port: int, host: str) -> list[str]:
+    """Build backend server command."""
+    command = [
+        str(venv_python),
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
+
+    if os.getenv("YICE_BACKEND_RELOAD", "").lower() in ("1", "true", "yes"):
+        command.append("--reload")
+
+    return command
+
+
+def build_frontend_command(frontend_path: Path, port: int, host: str) -> list[str]:
+    """Build frontend dev server command without relying on .bin execute bits."""
+    vite_entrypoint = frontend_path / "node_modules" / "vite" / "bin" / "vite.js"
+    if vite_entrypoint.exists():
+        return ["node", str(vite_entrypoint), "--host", host, "--port", str(port)]
+    return ["npm", "run", "dev", "--", "--host", host, "--port", str(port)]
+
+
 def check_venv() -> bool:
     """检查后端虚拟环境是否存在."""
     backend_path = get_backend_path()
@@ -49,6 +96,13 @@ def check_venv() -> bool:
         print(
             "请先运行：cd web/backend && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
         )
+        return False
+
+    try:
+        get_backend_python(backend_path)
+    except FileNotFoundError as e:
+        print("❌ 后端虚拟环境不完整")
+        print(str(e))
         return False
 
     return True
@@ -67,32 +121,18 @@ def check_node_modules() -> bool:
     return True
 
 
-def start_backend(port: int) -> subprocess.Popen:
+def start_backend(port: int, host: str) -> subprocess.Popen:
     """启动后端 FastAPI 服务."""
     backend_path = get_backend_path()
-    venv_python = backend_path / "venv" / "bin" / "python"
-
-    if not venv_python.exists():
-        # 尝试 Windows 路径
-        venv_python = backend_path / "venv" / "Scripts" / "python.exe"
+    venv_python = get_backend_python(backend_path)
 
     env = os.environ.copy()
     env["PORT"] = str(port)
 
-    print(f"🚀 启动后端服务 (端口：{port})...")
+    print(f"🚀 启动后端服务 ({host}:{port})...")
 
     process = subprocess.Popen(
-        [
-            str(venv_python),
-            "-m",
-            "uvicorn",
-            "main:app",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            str(port),
-            "--reload",
-        ],
+        build_backend_command(venv_python, port, host),
         cwd=str(backend_path),
         env=env,
     )
@@ -100,17 +140,17 @@ def start_backend(port: int) -> subprocess.Popen:
     return process
 
 
-def start_frontend(port: int) -> subprocess.Popen:
+def start_frontend(port: int, host: str) -> subprocess.Popen:
     """启动前端开发服务器."""
     frontend_path = get_frontend_path()
 
     env = os.environ.copy()
     env["PORT"] = str(port)
 
-    print(f"🎨 启动前端服务 (端口：{port})...")
+    print(f"🎨 启动前端服务 ({host}:{port})...")
 
     process = subprocess.Popen(
-        ["npm", "run", "dev", "--", "--port", str(port)],
+        build_frontend_command(frontend_path, port, host),
         cwd=str(frontend_path),
         env=env,
     )
@@ -159,24 +199,26 @@ def main():
     # 获取端口配置
     backend_port = int(os.getenv("YICE_BACKEND_PORT", "8000"))
     frontend_port = int(os.getenv("YICE_FRONTEND_PORT", "5173"))
+    backend_host = os.getenv("YICE_BACKEND_HOST", "127.0.0.1")
+    frontend_host = os.getenv("YICE_FRONTEND_HOST", "127.0.0.1")
     no_open = os.getenv("YICE_NO_OPEN", "").lower() in ("1", "true", "yes")
 
     # 启动后端
-    backend_process = start_backend(backend_port)
+    backend_process = start_backend(backend_port, backend_host)
 
     # 等待后端启动
     print("⏳ 等待后端服务就绪...")
-    if wait_for_server(f"http://localhost:{backend_port}/api/health"):
+    if wait_for_server(f"http://{backend_host}:{backend_port}/api/health"):
         print("✅ 后端服务已就绪")
     else:
         print("⚠️  后端服务启动超时，但将继续启动前端")
 
     # 启动前端
-    frontend_process = start_frontend(frontend_port)
+    frontend_process = start_frontend(frontend_port, frontend_host)
 
     # 等待前端启动
     print("⏳ 等待前端服务就绪...")
-    if wait_for_server(f"http://localhost:{frontend_port}"):
+    if wait_for_server(f"http://{frontend_host}:{frontend_port}"):
         print("✅ 前端服务已就绪")
     else:
         print("⚠️  前端服务启动超时")
@@ -184,13 +226,13 @@ def main():
     # 打开浏览器
     if not no_open:
         print("\n🌐 打开浏览器...")
-        webbrowser.open(f"http://localhost:{frontend_port}")
+        webbrowser.open(f"http://{frontend_host}:{frontend_port}")
 
     print("\n" + "=" * 60)
     print("✨ 易策 Web 应用已启动!")
     print("=" * 60)
-    print(f"📍 前端地址：http://localhost:{frontend_port}")
-    print(f"🔌 后端地址：http://localhost:{backend_port}")
+    print(f"📍 前端地址：http://{frontend_host}:{frontend_port}")
+    print(f"🔌 后端地址：http://{backend_host}:{backend_port}")
     print("\n按 Ctrl+C 停止所有服务")
     print("=" * 60 + "\n")
 

@@ -1,7 +1,7 @@
-"""Tests for agents/yao_agents.py"""
-
-import sys
 import os
+import sys
+import threading
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -211,6 +211,39 @@ class TestYaoAgent:
         assert result.yao_ci == "潜龙勿用"
         assert "基础环境层" in result.analysis
 
+    def test_analyze_without_llm_returns_actionable_local_analysis(self):
+        config = YaoAgentConfig(position=YaoPosition.THIRD)
+        agent = YaoAgent(config)
+        ctx = make_hexagram_context()
+        line_data = {"line_name": "九三", "yao_ci": "君子终日乾乾"}
+
+        result = agent.analyze(ctx, line_data)
+        combined = f"{result.analysis}{result.advice}{result.risks}"
+
+        assert "待 LLM" not in combined
+        assert "待生成" not in combined
+        assert "待风险评估" not in combined
+        assert "风险" in result.risks
+        assert len(result.advice) > 10
+
+    def test_local_analysis_summarizes_long_line_text(self):
+        config = YaoAgentConfig(position=YaoPosition.SECOND)
+        agent = YaoAgent(config)
+        ctx = make_hexagram_context()
+        line_data = {
+            "line_name": "九二",
+            "yao_ci": "Dragon appearing in the field.\n"
+            "It furthers one to see the great man.\n\n"
+            "【Wilhelm解读】Here the effects of the light-giving power begin "
+            "to manifest themselves across a very long paragraph.",
+        }
+
+        result = agent.analyze(ctx, line_data)
+
+        assert "\n" not in result.analysis
+        assert "【Wilhelm解读】" not in result.analysis
+        assert len(result.analysis) < 220
+
     def test_analyze_missing_line_name_raises(self):
         config = YaoAgentConfig(position=YaoPosition.INITIAL)
         agent = YaoAgent(config)
@@ -277,6 +310,29 @@ class TestYaoAgentOrchestrator:
         for i, result in enumerate(results, 1):
             assert result.position == i
 
+    def test_analyze_all_runs_positions_concurrently_and_keeps_order(self):
+        active_calls = 0
+        max_active_calls = 0
+        lock = threading.Lock()
+
+        def slow_llm(system: str, user: str) -> str:
+            nonlocal active_calls, max_active_calls
+            with lock:
+                active_calls += 1
+                max_active_calls = max(max_active_calls, active_calls)
+            time.sleep(0.05)
+            with lock:
+                active_calls -= 1
+            return "解读：并发测试\n建议：保持顺序\n风险：无"
+
+        orchestrator = YaoAgentOrchestrator(llm_call=slow_llm)
+        ctx = make_hexagram_context()
+
+        results = orchestrator.analyze_all(ctx)
+
+        assert max_active_calls > 1
+        assert [result.position for result in results] == [1, 2, 3, 4, 5, 6]
+
     def test_analyze_all_no_lines_raises(self):
         orchestrator = YaoAgentOrchestrator()
         ctx = make_hexagram_context(lines=[])
@@ -288,11 +344,8 @@ class TestYaoAgentOrchestrator:
             assert "No line data" in str(e)
 
     def test_analyze_all_partial_failure(self):
-        call_count = [0]
-
         def failing_llm(system: str, user: str) -> str:
-            call_count[0] += 1
-            if call_count[0] in [2, 4]:
+            if "九二" in user or "九四" in user:
                 raise ValueError("Simulated failure")
             return "解读：测试\n建议：测试\n风险：测试"
 
@@ -464,6 +517,8 @@ class TestYaoAgentEdgeCases:
 
         assert result.position == 1
         assert result.analysis is not None
+        assert "这不是正确的格式" not in result.analysis
+        assert "未按结构化格式" in result.analysis
 
     def test_analyze_with_unicode_in_line_data(self):
         """Test analyze with unicode characters in line data."""

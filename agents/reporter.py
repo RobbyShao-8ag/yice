@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from core.hu_gua import calculate_hu_gua, calculate_trigram_value
+from core.llm_filters import filter_think_content
 from core.models import (
     DecisionReport,
     HexagramContext,
@@ -36,6 +37,10 @@ TRIGRAM_MEANINGS = {
     6: "艮为山 - 停止、稳固、阻碍",
     7: "乾为天 - 刚健、自强不息",
 }
+
+
+def _strip_sentence_end(text: str) -> str:
+    return text.strip().rstrip("。.!！？；; ")
 
 
 def get_trigram_name(trigram_id: int) -> str:
@@ -212,14 +217,17 @@ class ReporterAgent:
         hu_gua_analysis: Optional[str],
     ) -> DecisionReport:
         """Generate mock report when LLM is not available."""
+        overall_advice, key_risks, timing_judgment, next_steps = (
+            self._generate_mock_report_data(question, hexagram_context, yao_analyses)
+        )
         return DecisionReport(
             question=question,
             hexagram=hexagram_context,
             yao_analyses=yao_analyses,
-            overall_advice=f"基于{hexagram_context.hexagram_name}的综合建议",
-            key_risks="需要关注的主要风险",
-            timing_judgment="时机判断",
-            next_steps=["步骤 1", "步骤 2", "步骤 3"],
+            overall_advice=overall_advice,
+            key_risks=key_risks,
+            timing_judgment=timing_judgment,
+            next_steps=next_steps,
             hu_gua_analysis=hu_gua_analysis,
         )
 
@@ -232,7 +240,9 @@ class ReporterAgent:
         hexagram_name = hexagram_context.hexagram_name
         hexagram_id = hexagram_context.hexagram_id
 
-        yao_highlights = [ya.advice for ya in yao_analyses if ya.advice][:3]
+        yao_highlights = [
+            _strip_sentence_end(ya.advice) for ya in yao_analyses if ya.advice
+        ][:3]
         if not yao_highlights:
             yao_highlights = ["审慎行事", "把握时机", "注重积累"]
 
@@ -242,9 +252,11 @@ class ReporterAgent:
             + "。易经强调因时而动，顺势而为。"
         )
 
-        risks = [ya.risks for ya in yao_analyses if ya.risks and ya.risks != "待评估"][
-            :2
-        ]
+        risks = [
+            _strip_sentence_end(ya.risks)
+            for ya in yao_analyses
+            if ya.risks and ya.risks != "待评估"
+        ][:2]
         if not risks:
             risks = ["需注意潜在风险", "建议谨慎评估"]
         key_risks = "；".join(risks)
@@ -338,17 +350,7 @@ class ReporterAgent:
 
     def _filter_think_content(self, response: str) -> str:
         """Remove think/reasoning blocks from response."""
-        response = re.sub(r"hlen.*?hlen", "", response, flags=re.DOTALL | re.IGNORECASE)
-        response = re.sub(
-            r"\|think\|.*?\|think\|", "", response, flags=re.DOTALL | re.IGNORECASE
-        )
-        response = re.sub(
-            r"\(think\).*?\(think\)", "", response, flags=re.DOTALL | re.IGNORECASE
-        )
-        response = re.sub(
-            r"\[think\].*?\[think\]", "", response, flags=re.DOTALL | re.IGNORECASE
-        )
-        return response.strip()
+        return filter_think_content(response)
 
     def _try_parse_json(
         self, response: str

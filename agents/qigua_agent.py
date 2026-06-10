@@ -1,10 +1,10 @@
-"""
-QiguaAgent V2 for the yice decision system.
+"""QiguaAgent V2 for the yice decision system.
 
 起卦官 V2 - LLM 驱动的多轮对话系统。
 通过智能对话收集用户问题背景，动态生成问题和选项。
 """
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Callable, Optional
@@ -39,6 +39,7 @@ class QiguaAgent:
         self._config = config or QiguaAgentConfig()
         self._llm_call = self._config.llm_call
         self._max_rounds = min(self._config.max_rounds, 5)
+        self._fallback_field_count = 0
 
         if self._llm_call:
             self.analyzer = QuestionAnalyzer(self._llm_call)
@@ -274,7 +275,7 @@ class QiguaAgent:
         return f"""问题类型：{question_type}
 
 已收集的信息:
-{json_dumps(context, ensure_ascii=False)}
+{json.dumps(context, ensure_ascii=False)}
 
 对话历史:
 {history_text}
@@ -294,8 +295,6 @@ class QiguaAgent:
 
     def _parse_next_question(self, response: str) -> tuple[str, list[str]]:
         """解析下一个问题响应"""
-        import json
-
         json_str = self._extract_json(response)
         try:
             data = json.loads(json_str)
@@ -332,7 +331,8 @@ class QiguaAgent:
             return "time_horizon"
         elif any(kw in q for kw in ["风险", "承受", "保守", "激进"]):
             return "risk_tolerance"
-        return f"info_{len(self._config.__dict__)}"
+        self._fallback_field_count += 1
+        return f"info_{self._fallback_field_count}"
 
     def _get_user_input(self, options: list[str]) -> str:
         """获取用户输入"""
@@ -421,10 +421,3 @@ class QiguaAgent:
             risk_tolerance=risk,
             is_complete=True,
         )
-
-
-def json_dumps(obj, ensure_ascii=True, indent=None):
-    """Simple JSON dump helper"""
-    import json
-
-    return json.dumps(obj, ensure_ascii=ensure_ascii, indent=indent)

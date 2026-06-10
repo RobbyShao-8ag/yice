@@ -1,5 +1,6 @@
 # Logs
 logs/
+web/backend/logs/
 *.log
 
 # Python
@@ -32,6 +33,7 @@ ENV/
 # IDE
 .idea/
 .vscode/
+.DS_Store
 *.swp
 *.swo
 

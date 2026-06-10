@@ -41,6 +41,7 @@ setup_logging(
     log_file="logs/yice.log",
     json_format=False,
     sensitive_fields=["api_key", "password", "secret", "sk-"],
+    console_level="WARNING",
 )
 logger = logging.getLogger(__name__)
 
@@ -78,8 +79,12 @@ def create_llm_call(client: LLMClient) -> Callable[[str, str], str]:
     return llm_call
 
 
-def load_models_config() -> dict:
+def load_models_config(config_path: Optional[str] = None) -> dict:
     """Load models.json configuration with validation.
+
+    Args:
+        config_path: Optional config path. Defaults to YICE_MODELS_CONFIG
+            or models.json.
 
     Returns:
         Configuration dictionary with providers and agents.
@@ -88,11 +93,12 @@ def load_models_config() -> dict:
         FileNotFoundError: If models.json doesn't exist.
         ValueError: If configuration is invalid.
     """
+    config_path = config_path or os.getenv("YICE_MODELS_CONFIG", "models.json")
     try:
-        config = load_config("models.json")
+        config = load_config(config_path)
     except FileNotFoundError:
         raise FileNotFoundError(
-            "配置文件 models.json 不存在。请复制 models.example.json 并填写API密钥。"
+            f"配置文件 {config_path} 不存在。请复制 models.example.json 并填写API密钥。"
         )
 
     validator = ConfigValidator(config)
@@ -160,7 +166,18 @@ def build_question_context(
     # Simple question type detection
     question_type = "综合"
     type_keywords = {
-        "创业": ["创业", "开公司", "做生意", "项目"],
+        "创业": [
+            "创业",
+            "开公司",
+            "做生意",
+            "项目",
+            "产品",
+            "原型",
+            "客户",
+            "试用",
+            "现金流",
+            "全职投入",
+        ],
         "职业": ["职业", "工作", "跳槽", "晋升", "就业"],
         "投资": ["投资", "理财", "股票", "基金", "财富"],
         "人际": ["人际", "关系", "社交", "朋友", "合作"],
@@ -251,7 +268,7 @@ def run_pipeline(
             question_ctx = qigua_agent.collect_context(question)
             logger.info(f"Question type: {question_ctx.question_type}")
         else:
-            print("\n[1/4] 起卦官对话中...")
+            print("\n[1/4] 本地问题解析中...")
             question_ctx = build_question_context(question, llm_call)
             logger.info(f"Question type: {question_ctx.question_type}")
 
@@ -327,6 +344,15 @@ def run_pipeline(
         return None
 
 
+def format_console_excerpt(text: str, max_chars: int = 120) -> str:
+    """Compact long source text for interactive console output."""
+    excerpt = text.split("【", 1)[0]
+    excerpt = " ".join(excerpt.split())
+    if len(excerpt) > max_chars:
+        return excerpt[:max_chars].rstrip() + "..."
+    return excerpt
+
+
 def print_report(report: DecisionReport):
     """Print decision report to console.
 
@@ -348,7 +374,7 @@ def print_report(report: DecisionReport):
 
     for ya in report.yao_analyses:
         print(f"\n■ {ya.line_name}")
-        print(f"  爻辞：{ya.yao_ci}")
+        print(f"  爻辞：{format_console_excerpt(ya.yao_ci)}")
         print(f"  解读：{ya.analysis}")
         print(f"  建议：{ya.advice}")
         print(f"  风险：{ya.risks}")
@@ -390,27 +416,28 @@ def main():
             print("使用 'python main.py --help' 查看帮助。", file=sys.stderr)
             return 1
 
-    # Load configuration
+    # Load configuration. Missing or example credentials should not block
+    # first-run exploration; the CLI can run a deterministic local demo.
+    models_config = None
     try:
         models_config = load_models_config()
         print("✓ 配置验证通过")
     except FileNotFoundError as e:
-        print("❌ 配置文件不存在。")
-        print(f"错误详情：{e}")
-        print("\n请复制 models.example.json 并填写 API 密钥：")
-        print("  cp models.example.json models.json")
-        return 1
+        print("ℹ️  未找到模型配置，已进入本地演示模式。")
+        print(f"   {e}")
+        print("   无需 API Key 也可以先体验完整流程。")
+        print("   配置 LLM 后可获得更细致的 AI 推演：cp models.example.json models.json")
     except ValueError as e:
-        print("❌ 配置验证失败，请检查 models.json")
-        print(f"错误详情：{e}")
-        return 1
+        print("⚠️  配置未启用，已进入本地演示模式。")
+        print(f"   原因：{e}")
+        print("   请把 models.json 中的示例 API Key 替换为真实 Key 后再启用 LLM。")
 
     # Create LLM client (use scene_router config as default)
-    llm_client = create_llm_client(models_config, "scene_router")
+    llm_client = create_llm_client(models_config, "scene_router") if models_config else None
     llm_call = create_llm_call(llm_client) if llm_client else None
 
     if llm_call is None:
-        print("警告：未配置 LLM，将使用本地模式（功能受限）")
+        print("本地演示模式：使用内置卦象、爻辞和规则生成决策参考。")
 
     # Load data
     try:

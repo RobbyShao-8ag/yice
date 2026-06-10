@@ -194,6 +194,30 @@ def test_hexagram_context_fields():
     assert isinstance(result.hexagram_data, dict)
 
 
+def test_llm_fallback_hexagram_name_uses_data_loader():
+    """LLM fallback should prefer canonical data over hardcoded names."""
+
+    class FakeLoader:
+        def get_hexagram(self, hexagram_id):
+            return {"id": hexagram_id, "name": "数据卦名"}
+
+        def get_lines_for_hexagram(self, hexagram_id):
+            return []
+
+    router = SceneRouter(
+        SceneRouterConfig(
+            llm_call=lambda _system, _user: "5 因为需要等待时机",
+            data_loader=FakeLoader(),
+        )
+    )
+
+    question = create_question(question_type="其他", raw_question="完全未知的新场景")
+    result = router.route(question)
+
+    assert result.hexagram_id == 5
+    assert result.hexagram_name == "数据卦名"
+
+
 def test_default_scene_mapping_coverage():
     """Test that default scene mapping covers key scenarios."""
     expected_keys = [

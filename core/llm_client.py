@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from core.errors import LLMCallError, LLMRateLimitError
+from core.llm_filters import filter_think_content
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class LLMConfig:
     model: str = "gpt-3.5-turbo"
     timeout: int = 60
     max_retries: int = 3
+    log_raw_response: bool = False
 
 
 class LLMClient:
@@ -153,14 +155,19 @@ class LLMClient:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON response: {e}")
 
-        # DEBUG: Log full response structure
-        logger.info("=" * 60)
-        logger.info("LLM RAW RESPONSE:")
-        try:
-            logger.info(json.dumps(data, indent=2, ensure_ascii=False)[:2000])
-        except:
-            logger.info(str(data)[:2000])
-        logger.info("=" * 60)
+        usage = data.get("usage", {})
+        logger.debug(
+            "LLM response received provider=%s model=%s prompt_tokens=%s "
+            "completion_tokens=%s total_tokens=%s",
+            self._config.provider,
+            self._config.model,
+            usage.get("prompt_tokens"),
+            usage.get("completion_tokens"),
+            usage.get("total_tokens"),
+        )
+
+        if self._config.log_raw_response or os.getenv("YICE_DEBUG_LLM_RAW") == "1":
+            logger.debug("LLM raw response: %s", _safe_json_preview(data))
 
         # Extract message content
         if "choices" not in data or not data["choices"]:
@@ -176,28 +183,15 @@ class LLMClient:
 
         content = message["content"]
 
-        # Filter out MiniMax think blocks (hlen...hline)
-        import re
-
         original_content = content
-        # Pattern: hlen + newline + think content + hline + newline
-        content = re.sub(
-            r"^hlen\s*\n.*?\n\s*hline\s*\n",
-            "",
-            content,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-        # Pattern: hlen content hline (inline)
-        content = re.sub(
-            r"hlen\s*\n(.*?)\n\s*hline",
-            "",
-            content,
-            flags=re.DOTALL,
-        )
+        content = filter_think_content(content)
 
         if len(content) < len(original_content):
-            logger.info(f"FILTERED: {len(original_content)} -> {len(content)} chars")
-            logger.info(f"CONTENT AFTER FILTER (first 500 chars): {content[:500]}")
+            logger.debug(
+                "Filtered LLM reasoning markers: %s -> %s chars",
+                len(original_content),
+                len(content),
+            )
 
         return content.strip()
 
@@ -264,3 +258,10 @@ def load_config(config_path: str = "models.json") -> dict:
             agents[agent_name]["model"] = env_model
 
     return config
+
+
+def _safe_json_preview(data: Any, limit: int = 2000) -> str:
+    try:
+        return json.dumps(data, indent=2, ensure_ascii=False)[:limit]
+    except (TypeError, ValueError):
+        return str(data)[:limit]

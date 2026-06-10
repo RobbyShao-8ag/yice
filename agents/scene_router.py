@@ -286,6 +286,11 @@ class SceneRouter:
 
     def _get_hexagram_name(self, hexagram_id: int) -> str:
         """Get hexagram name by ID."""
+        if self._data_loader:
+            hexagram = self._data_loader.get_hexagram(hexagram_id)
+            if hexagram and hexagram.get("name"):
+                return str(hexagram["name"])
+
         hexagram_names = {
             1: "乾为天",
             2: "坤为地",

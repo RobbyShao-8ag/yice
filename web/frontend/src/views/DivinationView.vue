@@ -25,6 +25,17 @@ const hasContent = (text: string | undefined | null): boolean => {
   return trimmed !== '' && trimmed !== '待补充' && trimmed !== '待生成建议' && trimmed !== '待风险评估'
 }
 
+const formatYaoCi = (text: string): string => {
+  if (!text) return ''
+  const withoutWilhelm = text.split('【Wilhelm解读】')[0].trim()
+  const normalized = withoutWilhelm
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .join(' ')
+  return normalized.length > 80 ? `${normalized.slice(0, 80).trim()}...` : normalized
+}
+
 const router = useRouter()
 
 // 六爻数据结构（用于图形显示）
@@ -41,6 +52,8 @@ interface YaoData {
 const isRunning = ref(false)
 const currentYaoIndex = ref(-1)
 const statusText = ref('等待开始推演')
+const activeYaoPositions = ref<Set<number>>(new Set())
+const completedYaoPositions = ref<Set<number>>(new Set())
 const showReportModal = ref(false)
 const hexagramName = ref('')
 const finalReport = ref<{
@@ -69,6 +82,16 @@ const dialogueStore = useDialogueStore()
 
 // 计算属性：从 Store 获取输出
 const outputs = computed(() => divinationStore.outputs)
+const completedYaoCount = computed(() => completedYaoPositions.value.size)
+const pendingYaoCount = computed(() => Math.max(activeYaoPositions.value.size - completedYaoPositions.value.size, 0))
+const progressText = computed(() => {
+  if (!isRunning.value) return statusText.value
+  if (activeYaoPositions.value.size > 0) {
+    return `六爻并行推演中：已完成 ${completedYaoCount.value}/${activeYaoPositions.value.size}，剩余 ${pendingYaoCount.value} 爻`
+  }
+  return statusText.value
+})
+const isYaoCompleted = (position: number): boolean => completedYaoPositions.value.has(position)
 
 // 六爻圆环尺寸（由内到外，单位：px）
 const ringSizes = [120, 175, 230, 285, 340, 395]
@@ -156,7 +179,8 @@ const handleDivinationMessage = (data: WebSocketMessage) => {
       break
     case 'yao_start':
       if (divinationData.position !== undefined) {
-        statusText.value = `正在分析第${divinationData.position}爻...`
+        activeYaoPositions.value = new Set([...activeYaoPositions.value, divinationData.position])
+        statusText.value = '六爻并行推演中...'
       }
       break
     case 'yao_thinking':
@@ -164,14 +188,17 @@ const handleDivinationMessage = (data: WebSocketMessage) => {
       break
     case 'yao_complete':
       if (divinationData.position !== undefined) {
+        completedYaoPositions.value = new Set([...completedYaoPositions.value, divinationData.position])
         divinationStore.addYaoOutput({
           position: divinationData.position,
           lineName: divinationData.line_name || '',
-          yaoCi: divinationData.yao_ci || '',
+          yaoCi: formatYaoCi(divinationData.yao_ci || ''),
           analysis: divinationData.analysis || '',
           advice: divinationData.advice || '',
+          risks: divinationData.risks || '',
         })
-        currentYaoIndex.value = divinationData.position
+        currentYaoIndex.value = Math.max(currentYaoIndex.value, divinationData.position)
+        statusText.value = progressText.value
       }
       break
     case 'stage_complete':
@@ -224,6 +251,8 @@ const startDivination = () => {
       divinationStore.start(questionContext)
       isRunning.value = true
       currentYaoIndex.value = -1
+      activeYaoPositions.value = new Set()
+      completedYaoPositions.value = new Set()
       statusText.value = '开始推演...'
     } else {
       console.error('Failed to connect to divination endpoint')
@@ -301,15 +330,15 @@ onUnmounted(() => {
             class="yao-ring"
             :class="[
               `yao-ring-${index + 1}`,
-              { active: currentYaoIndex > index }
+              { active: isYaoCompleted(index + 1) }
             ]"
             :style="{
               width: `${size}px`,
               height: `${size}px`,
-              borderColor: currentYaoIndex > index
+              borderColor: isYaoCompleted(index + 1)
                 ? yaoColors[index].color
                 : 'rgba(255, 255, 255, 0.08)',
-              boxShadow: currentYaoIndex > index
+              boxShadow: isYaoCompleted(index + 1)
                 ? `0 0 30px ${yaoColors[index].glow}, inset 0 0 30px ${yaoColors[index].glow}`
                 : 'none'
             }"
@@ -320,32 +349,32 @@ onUnmounted(() => {
               <line
                 v-if="yaoDataList[index]?.type === 'yang'"
                 class="yao-line"
-                :class="{ yang: currentYaoIndex > index }"
+                :class="{ yang: isYaoCompleted(index + 1) }"
                 :x1="size * 0.25"
                 :y1="size / 2"
                 :x2="size * 0.75"
                 :y2="size / 2"
-                :stroke="currentYaoIndex > index ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
+                :stroke="isYaoCompleted(index + 1) ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
               />
               <!-- 阴爻：两条短线 -->
               <g v-else>
                 <line
                   class="yao-line"
-                  :class="{ yin: currentYaoIndex > index }"
+                  :class="{ yin: isYaoCompleted(index + 1) }"
                   :x1="size * 0.15"
                   :y1="size / 2"
                   :x2="size * 0.45"
                   :y2="size / 2"
-                  :stroke="currentYaoIndex > index ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
+                  :stroke="isYaoCompleted(index + 1) ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
                 />
                 <line
                   class="yao-line"
-                  :class="{ yin: currentYaoIndex > index }"
+                  :class="{ yin: isYaoCompleted(index + 1) }"
                   :x1="size * 0.55"
                   :y1="size / 2"
                   :x2="size * 0.85"
                   :y2="size / 2"
-                  :stroke="currentYaoIndex > index ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
+                  :stroke="isYaoCompleted(index + 1) ? yaoColors[index].color : 'rgba(255, 255, 255, 0.1)'"
                 />
               </g>
             </svg>
@@ -372,7 +401,7 @@ onUnmounted(() => {
       <!-- 状态指示 -->
       <div class="status-indicator">
         <div class="pulse-dot animate-pulse"></div>
-        <span class="status-text">{{ statusText }}</span>
+        <span class="status-text">{{ progressText }}</span>
       </div>
 
       <!-- 开始推演/查看报告按钮 -->
@@ -390,7 +419,7 @@ onUnmounted(() => {
     <!-- 右侧推理输出区域 -->
     <section class="output-section">
       <header class="output-header">
-        <h2 class="output-title">爻辞解读 - 六爻依次展开推理，请耐心等待...</h2>
+        <h2 class="output-title">爻辞解读 - 六爻并行推演，完成后实时展示</h2>
         <div class="output-actions">
           <button class="action-btn" @click="copyOutput">复制</button>
           <button class="action-btn" @click="exportOutput">导出</button>
@@ -408,7 +437,7 @@ onUnmounted(() => {
         <!-- 推演中状态 -->
         <div v-if="isRunning && outputs.length === 0" class="loading-state">
           <div class="loading-spinner"></div>
-          <div class="loading-text">{{ statusText }}</div>
+          <div class="loading-text">{{ progressText }}</div>
         </div>
 
         <!-- 推演输出列表 -->
@@ -420,11 +449,11 @@ onUnmounted(() => {
         >
           <div class="yao-output-header">
             <span class="yao-position">第{{ output.position }}爻 · {{ output.lineName }}</span>
-            <span class="yao-ci-badge">{{ output.yaoCi }}</span>
+            <span v-if="output.yaoCi" class="yao-ci-badge" :title="output.yaoCi">{{ output.yaoCi }}</span>
           </div>
           <div class="yao-interpretation" v-html="renderMarkdown(output.analysis)"></div>
           <div v-if="hasContent(output.advice)" class="yao-advice" v-html="renderMarkdown(output.advice)"></div>
-          <div v-if="hasContent(output.risks)" class="yao-risks" v-html="renderMarkdown(output.risks)"></div>
+          <div v-if="hasContent(output.risks)" class="yao-risks" v-html="renderMarkdown(output.risks || '')"></div>
         </div>
       </div>
     </section>
@@ -616,6 +645,7 @@ onUnmounted(() => {
   background: rgba(155, 89, 182, 0.1);
   border: 1px solid rgba(155, 89, 182, 0.3);
   border-radius: 30px;
+  max-width: min(520px, 90%);
 }
 
 .pulse-dot {
@@ -628,8 +658,10 @@ onUnmounted(() => {
 .status-text {
   font-size: 14px;
   color: var(--accent-purple);
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   font-family: var(--font-serif);
+  white-space: normal;
+  text-align: center;
 }
 
 /* 开始推演按钮 */
@@ -678,7 +710,7 @@ onUnmounted(() => {
 
 .output-title {
   font-size: 16px;
-  letter-spacing: 4px;
+  letter-spacing: 2px;
   color: var(--text-secondary);
   font-family: var(--font-serif);
   font-weight: normal;
@@ -794,12 +826,14 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
+  min-width: 0;
 }
 
 .yao-position {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 2px;
+  flex: 0 0 auto;
 }
 
 .yao-output.yao-1-active .yao-position { color: var(--yao-1-color); }
@@ -817,6 +851,11 @@ onUnmounted(() => {
   border-radius: 4px;
   color: var(--yang-color);
   font-family: var(--font-serif);
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
 }
 
 .yao-interpretation {

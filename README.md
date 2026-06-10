@@ -20,6 +20,38 @@
 
 ---
 
+## 先试起来：不用 API Key
+
+易策现在支持**本地演示模式**：没有 `models.json`、或者 `models.json` 里还是示例 API Key 时，也能直接跑完整流程。系统会使用内置的 64 卦、爻辞和六爻角色规则生成结构化决策参考；配置真实 LLM 后，再升级为 AI 多 Agent 推演。
+
+```bash
+python main.py
+```
+
+可以直接输入一个真实问题，例如：
+
+```text
+我有一个 AI 工具原型和两个试用客户，但现金流只能支撑4个月，现在是否应该全职投入？
+```
+
+### 程序员怎么快速判断项目值不值得看
+
+```bash
+python main.py --help
+python main.py
+python -m pytest tests/test_cli.py tests/test_yao_agents.py tests/test_reporter.py -q
+```
+
+重点看三件事：`main.py` 的五阶段 pipeline、`agents/` 里的多 Agent 分工、`data/` 里的厚数据结构。
+
+### vibe coding / 非程序员怎么快速上手
+
+1. 运行 `./setup.sh`（Windows PowerShell 用 `.\setup.ps1`）。
+2. 运行 `python main.py`，先不用填 API Key。
+3. 把你想分析的真实决策粘进去，看报告是否能帮你拆出环境、资源、风险、策略、长期和复盘六个角度。
+
+---
+
 ## 🔬 核心技术差异化
 
 | 普通AI算命 | 易策 |
@@ -32,19 +64,28 @@
 
 ---
 
-## 📐 系统架构：六爻并行 + 变卦推演
+## 📐 系统架构：六爻并行 + 变卦规则
 
-```
-用户问题 → 起卦官 → 场景匹配(64卦)
-                     ↓
-        六爻Agents（同时并行分析）
-        初爻│二爻│三爻│四爻│五爻│上爻
-         ↓  ↓  ↓  ↓  ↓  ↓
-        风险│资源│时机│执行│规划│复盘
-                     ↓
-              变卦引擎（触发条件时）
-                     ↓
-            📄 决策参考报告
+```mermaid
+flowchart TD
+    A[用户问题] --> B[起卦官 QiguaAgent<br/>澄清背景、约束、目标]
+    B --> C[场景路由器 SceneRouter<br/>匹配64卦情境]
+    C --> D{六爻并行分析}
+    D --> D1[初爻<br/>环境感知]
+    D --> D2[二爻<br/>资源配置]
+    D --> D3[三爻<br/>风险评估]
+    D --> D4[四爻<br/>策略执行]
+    D --> D5[五爻<br/>长期规划]
+    D --> D6[上爻<br/>结果复盘]
+    D1 --> E[决策报告官 ReporterAgent]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
+    D6 --> E
+    C --> F[变卦规则<br/>核心规则已实现，报告集成迭代中]
+    F --> E
+    E --> G[决策参考报告]
 ```
 
 **灵感来源**：西周"三公议事"制度 + 现代多Agent协同架构（参考CrewAI/AutoGen），但核心决策逻辑完全重建于周易的"时、位、变"哲学。
@@ -56,6 +97,24 @@
 - **IEEE ICDEA论文** — 易经占卜进化算法（将周易符号系统形式化）
 - **64卦二进制编码** — 乾☰兑☱离☲震☳巽☴坎☵艮☶，每卦对应一种典型决策情境
 - **六爻体系** — 初爻感知→二爻资源→三爻风控→四爻执行→五爻规划→上爻复盘，形成完整决策链条
+
+---
+
+## 适用与不适用场景
+
+**适合使用：**
+
+- 创业、产品、职业、合作等需要多角度拆解的复杂决策
+- 团队复盘、战略推演、风险识别、行动方案比较
+- 希望把模糊问题整理成结构化思考框架的个人或团队
+
+**不适合使用：**
+
+- 医疗诊断、法律意见、证券投资建议等高风险专业判断
+- 需要确定性答案、实时数据或强合规审查的场景
+- 把输出当作命令、预言或替代个人责任的最终结论
+
+易策输出始终是**决策参考**，不是权威结论。它帮助你从环境、资源、风险、执行、长期和复盘六个角度重新看问题，最终决策仍应由你结合现实信息判断。
 
 ---
 
@@ -93,18 +152,48 @@
 ### 1. 一键安装
 
 ```bash
-# 克隆项目
 git clone https://github.com/RobbyShao-8ag/yice.git
 cd yice
+```
 
-# 一键安装脚本（自动检测Python版本、安装依赖）
+**macOS / Linux / Windows Git Bash / WSL**
+
+```bash
 ./setup.sh
 ```
 
-### 2. 配置API密钥
+**Windows PowerShell**
+
+```powershell
+.\setup.ps1
+```
+
+如果 PowerShell 提示脚本执行策略限制，可先在当前窗口执行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+### 2. 先运行本地演示
 
 ```bash
-# 编辑 models.json，填入你的LLM API密钥
+python main.py
+```
+
+没有配置 API Key 时，CLI 会自动进入本地演示模式，不会因为缺少 `models.json` 而退出。
+
+### 3. 可选：配置 API 密钥
+
+```bash
+cp models.example.json models.json
+# 编辑 models.json，填入你的 LLM API 密钥
+python main.py
+```
+
+如果你想把配置文件放在其他位置：
+
+```bash
+YICE_MODELS_CONFIG=/path/to/models.json python main.py
 ```
 
 ---
@@ -118,74 +207,42 @@ cd yice
 
 国产大模型中文训练数据占比更高，对这些内容理解更深，推演结果更准确。
 
-### 三款推荐配置
+### 推荐模型组合：DeepSeek V4 Flash + Pro
 
-| 模型 | 特点 | 价格 |
-|------|------|------|
-| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/deepseek-color.svg" width="24" valign="middle"> **DeepSeek R1** | 推理能力最强，性价比最高 | ¥1/百万tokens |
-| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/qwen-color.svg" width="24" valign="middle"> **Qwen3-Max** | 中文理解最好，支持1M超长上下文 | ¥2/百万tokens |
-| <img src="https://unpkg.com/@lobehub/icons-static-svg@latest/icons/zhipu-color.svg" width="24" valign="middle"> **GLM-5.1** | 新用户福利：送2000万免费tokens | ¥5/百万tokens |
+易策不是单一聊天机器人，而是由多个角色协作完成一次推演。不同角色对模型能力的要求不同：有的更需要速度和成本控制，有的更需要强推理和长文本综合。因此推荐使用 DeepSeek V4 的两个版本按角色分配：
+
+| 角色 | 任务特点 | 推荐模型 | 原因 |
+|------|----------|----------|------|
+| 起卦官 `qigua_agent` | 多轮澄清、提取背景和约束 | `deepseek-v4-flash` | 交互频繁，要求响应快、成本低 |
+| 场景路由器 `scene_router` | 判断问题类型，匹配64卦情境 | `deepseek-v4-pro` | 需要更强的语义理解和决策特征识别 |
+| 六爻分析 `yao_agent` | 6个视角并行生成分析 | `deepseek-v4-flash` | 调用次数多，适合高性价比模型 |
+| 报告官 `reporter` | 汇总六爻、生成最终决策参考 | `deepseek-v4-pro` | 需要综合推理、结构化表达和一致性控制 |
+
+DeepSeek 官方 API 在 2026-04-24 已支持 `deepseek-v4-pro` 和 `deepseek-v4-flash`。旧的 `deepseek-chat` / `deepseek-reasoner` 将在 2026-07-24 停用，建议新配置直接使用 V4 模型名。
 
 ### 配置示例
 
-**方案1：DeepSeek R1（推荐）**
+**DeepSeek V4 推荐配置**
 ```json
 {
   "providers": {
-    "openrouter": {
+    "deepseek": {
       "api_key": "your-key",
-      "base_url": "https://openrouter.ai/api/v1"
+      "base_url": "https://api.deepseek.com",
+      "default_model": "deepseek-v4-flash"
     }
   },
   "agents": {
-    "qigua_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
-    "scene_router": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
-    "yao_agent": { "provider": "openrouter", "model": "deepseek/deepseek-r1" },
-    "reporter": { "provider": "openrouter", "model": "deepseek/deepseek-r1" }
-  }
-}
-```
-
-**方案2：Qwen3-Max（阿里百炼）**
-```json
-{
-  "providers": {
-    "qwen": {
-      "api_key": "your-key",
-      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    }
-  },
-  "agents": {
-    "qigua_agent": { "provider": "qwen", "model": "qwen3-max" },
-    "scene_router": { "provider": "qwen", "model": "qwen3-max" },
-    "yao_agent": { "provider": "qwen", "model": "qwen3-max" },
-    "reporter": { "provider": "qwen", "model": "qwen3-max" }
-  }
-}
-```
-
-**方案3：GLM-5.1（智谱AI）**
-```json
-{
-  "providers": {
-    "glm": {
-      "api_key": "your-key",
-      "base_url": "https://open.bigmodel.cn/api/paas/v4"
-    }
-  },
-  "agents": {
-    "qigua_agent": { "provider": "glm", "model": "glm-5.1" },
-    "scene_router": { "provider": "glm", "model": "glm-5.1" },
-    "yao_agent": { "provider": "glm", "model": "glm-5.1" },
-    "reporter": { "provider": "glm", "model": "glm-5.1" }
+    "qigua_agent": { "provider": "deepseek", "model": "deepseek-v4-flash" },
+    "scene_router": { "provider": "deepseek", "model": "deepseek-v4-pro" },
+    "yao_agent": { "provider": "deepseek", "model": "deepseek-v4-flash" },
+    "reporter": { "provider": "deepseek", "model": "deepseek-v4-pro" }
   }
 }
 ```
 
 **获取 API Key：**
-- DeepSeek: https://platform.deepseek.com 或 https://openrouter.ai
-- Qwen: https://dashscope.aliyun.com
-- GLM: https://open.bigmodel.cn（新用户注册送2000万tokens）
+- DeepSeek: https://platform.deepseek.com
 
 ---
 
@@ -212,12 +269,15 @@ python web/main.py
 ```bash
 git clone https://github.com/RobbyShao-8ag/yice.git
 cd yice
+python main.py
+
+# 可选：启用 LLM 推演
 cp models.example.json models.json
-# 编辑 models.json 配置 API 密钥
+# 编辑 models.json 配置 API 密钥后再次运行
 python main.py
 ```
 
-### Web版本
+### Web版本：macOS / Linux
 ```bash
 # 后端
 cd web/backend
@@ -232,6 +292,23 @@ npm install
 # 启动
 cd ../..
 python web/main.py
+```
+
+### Web版本：Windows PowerShell
+```powershell
+# 后端
+cd web\backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# 前端
+cd ..\frontend
+npm install
+
+# 启动
+cd ..\..
+python web\main.py
 ```
 
 </details>
@@ -251,6 +328,44 @@ python web/main.py
 
 ---
 
+## 示例案例
+
+### 案例1：是否现在启动一个新产品？
+
+**输入问题**：我有一个面向中小企业的AI工具想法，已有原型和两个试用客户，但现金流只能支撑4个月，现在是否应该全职投入？
+
+**系统推演**：
+- 起卦官会补全背景、资源、时间窗口和风险承受度
+- 场景路由器会优先匹配创业启动、产品验证、资源约束相关卦象
+- 六爻并行分析会分别检查市场时机、可用资源、现金流风险、执行路径、长期战略和极端失败情形
+
+**输出重点**：通常不会只回答“该不该做”，而是给出阶段性策略，例如继续验证、控制投入节奏、设置止损线、优先争取付费客户。
+
+### 案例2：是否接受一个合作机会？
+
+**输入问题**：一个朋友邀请我一起做线下培训项目，他负责销售，我负责课程和交付。机会看起来不错，但分工和分账还没谈清楚。
+
+**系统推演**：
+- 资源层会检查双方投入是否对等
+- 风险层会提示口头承诺、利益分配和交付压力
+- 策略层会建议先小规模试点，并把职责、成本、客户归属写入协议
+
+**输出重点**：帮助你把“关系好不好”转成“边界是否清晰、风险是否可控、合作机制是否可持续”。
+
+### 案例3：团队是否扩张太快？
+
+**输入问题**：团队最近两个月从5人扩到15人，业务还在增长，但沟通成本明显上升，是否应该继续招聘？
+
+**系统推演**：
+- 环境层判断增长是真需求还是短期波动
+- 资源层评估管理、现金流和交付能力
+- 长期层关注组织结构是否能支撑后续规模
+- 复盘层提醒扩张过快可能带来的质量和文化损耗
+
+**输出重点**：给出招聘节奏、组织分层、关键岗位优先级和暂停扩张的触发条件。
+
+---
+
 ## 数据优化与程序改进
 
 ### 数据文件说明
@@ -267,11 +382,11 @@ data/
 ### 如何优化数据
 1. **丰富场景映射**：在`scene_mapping.json`中添加更多问题类型到卦象的映射
 2. **完善爻辞解读**：在`lines.json`中为每个爻位添加更贴近现代的解读
-3. **增加变卦逻辑**：实现`bian_gua.py`中的变卦引擎
+3. **接入变卦逻辑**：将`bian_gua.py`中的变卦规则更完整地接入报告流程
 
 ### 如何改进程序
 1. **Agent个性化**：每个Agent可以配置不同的LLM模型和人格
-2. **并行优化**：将六爻分析从串行改为真正的并行执行
+2. **并行稳定性**：持续优化六爻并行分析的异常隔离、进度反馈和耗时统计
 3. **交互增强**：增加用户反馈机制，让系统学习用户的决策偏好
 
 ---
@@ -300,7 +415,7 @@ data/
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
-| **变卦引擎** | ⏳ 待实现 | 基于朱熹《易学启蒙》的7种变爻规则 |
+| **变卦引擎** | 🚧 规则已实现，集成中 | 基于朱熹《易学启蒙》的7种变爻规则，需继续接入完整推演报告 |
 | **爻辞完善** | ⏳ 部分完成 | 384爻爻辞中部分为"待补充"状态 |
 | **互卦分析** | ⏳ 待实现 | 二三四爻、三四五爻的互卦推演 |
 
@@ -318,7 +433,7 @@ data/
 |--------|------|------|
 | **场景映射扩展** | ⏳ 基础版 | 目前约80个场景，计划扩展到200+ |
 | **爻位属性细化** | ⏳ 基础版 | 六爻角色分工可进一步细化 |
-| **变爻规则完善** | ⏳ 待实现 | 7种变爻规则的完整实现 |
+| **变爻规则完善** | 🚧 基础版 | 7种变爻规则已有基础实现，后续完善触发条件和报告呈现 |
 
 ---
 

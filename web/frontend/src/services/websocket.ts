@@ -50,6 +50,12 @@ export interface DecisionReport {
   key_risks: string
   timing_judgment: string
   next_steps: string[]
+  yao_summary?: {
+    position: number
+    line_name: string
+    yao_ci: string
+    brief: string
+  }[]
 }
 
 // Union type for all WebSocket messages
