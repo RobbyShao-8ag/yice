@@ -33,7 +33,7 @@ from agents.yao_agents import YaoAgentOrchestrator
 from agents.reporter import ReporterAgent, ReporterConfig
 
 
-VERSION = "0.1.0"
+VERSION = "1.2.0"
 
 # Setup logging
 setup_logging(

@@ -44,7 +44,7 @@ class TestCLIVersion:
         )
         output = result.stdout
         assert "version" in output.lower()
-        assert "0.1.0" in output
+        assert "1.2.0" in output
 
 
 class TestCLIInvalidArgs:

@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="易策 Web API",
     description="Web backend for yice AI decision system",
-    version="0.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -69,5 +69,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "yice-web-api",
-        "version": "0.1.0",
+        "version": "1.2.0",
     }
