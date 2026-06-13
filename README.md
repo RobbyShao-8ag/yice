@@ -1,38 +1,54 @@
-# 易策 (yice) - 基于周易64卦的AI多Agent决策系统
+# 易策 (yice) - 零依赖的 AI 多 Agent 决策参考系统
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub Stars](https://img.shields.io/github/stars/RobbyShao-8ag/yice.svg?style=social)](https://github.com/RobbyShao-8ag/yice)
 
-> "易者，变易也。策者，决策也。"
+[GitHub](https://github.com/RobbyShao-8ag/yice) | [Gitee 镜像](https://gitee.com/RobbyShaw8ag/yice) | [English](README-en.md) | 中文
 
-[English](README-en.md) | 中文
+> 易策不是算命工具，而是把周易的“时、位、变”抽象成一套可运行的多 Agent 决策分析流程。
 
-## ⚡ 一句话说明白
+## 3 分钟先跑一次
 
-**不是算命，是用周易哲学框架做结构化决策分析的AI系统。**
+CLI 版本只依赖 Python 标准库。没有 `models.json`、或者 `models.json` 里还是示例 API Key 时，也能直接进入本地演示模式，先看完整流程和报告效果。
 
-市面上99%的"AI周易"只是套了个卦象外壳，答案全靠LLM自由发挥。
-
-**易策**的不同在于：用周易的**符号体系 + 变化逻辑**驱动一个多Agent协同一推演体系——
-
-每个"爻"都是独立视角的AI Agent，六个视角同时审视同一个问题，最后综合出有结构、有深度、有变化思维的决策参考。
-
----
-
-## 先试起来：不用 API Key
-
-易策现在支持**本地演示模式**：没有 `models.json`、或者 `models.json` 里还是示例 API Key 时，也能直接跑完整流程。系统会使用内置的 64 卦、爻辞和六爻角色规则生成结构化决策参考；配置真实 LLM 后，再升级为 AI 多 Agent 推演。
+**GitHub**
 
 ```bash
+git clone https://github.com/RobbyShao-8ag/yice.git
+cd yice
 python main.py
 ```
 
-可以直接输入一个真实问题，例如：
+**国内网络优先用 Gitee**
+
+```bash
+git clone https://gitee.com/RobbyShaw8ag/yice.git
+cd yice
+python main.py
+```
+
+可以直接输入一个真实问题：
 
 ```text
 我有一个 AI 工具原型和两个试用客户，但现金流只能支撑4个月，现在是否应该全职投入？
 ```
+
+你会得到一份按“环境、资源、风险、策略、长期、复盘”六个视角拆解的**决策参考**。配置真实 LLM 后，系统会从本地演示升级为 AI 多 Agent 推演。
+
+## 适合谁
+
+- **程序员**：想看一个不用 LangChain、只用 Python 标准库组织多 Agent pipeline 的项目。
+- **AI 产品/创业者**：想把模糊决策拆成结构化分析框架，而不是只问聊天机器人“该不该做”。
+- **vibe coding / 非程序员**：想先跑起来试效果，再决定是否接入自己的大模型 API。
+
+## 一句话说明白
+
+市面上很多“AI周易”只是套了个卦象外壳，答案主要靠 LLM 自由发挥。
+
+**易策**的不同在于：用周易的**符号体系 + 变化逻辑**驱动一个多 Agent 协同推演体系。
+
+每个“爻”都是独立视角的 Agent，六个视角审视同一个问题，最后综合出有结构、有深度、有变化思维的决策参考。
 
 ### 程序员怎么快速判断项目值不值得看
 
@@ -46,9 +62,17 @@ python -m pytest tests/test_cli.py tests/test_yao_agents.py tests/test_reporter.
 
 ### vibe coding / 非程序员怎么快速上手
 
-1. 运行 `./setup.sh`（Windows PowerShell 用 `.\setup.ps1`）。
-2. 运行 `python main.py`，先不用填 API Key。
+1. 直接运行 `python main.py`；如果想检查环境，再运行 `./setup.sh`（Windows PowerShell 用 `.\setup.ps1`）。
+2. 先不用填 API Key，本地演示模式会自动接管。
 3. 把你想分析的真实决策粘进去，看报告是否能帮你拆出环境、资源、风险、策略、长期和复盘六个角度。
+
+## 项目亮点
+
+- **零运行时依赖**：CLI 版本只用 Python 标准库。
+- **无 API Key 可试玩**：先体验完整流程，再决定是否配置真实 LLM。
+- **厚数据驱动**：64 卦、爻辞、场景映射都放在 JSON 中，行为可检查、可扩展。
+- **多 Agent 分工**：起卦、场景路由、六爻分析、报告生成职责清晰。
+- **开放贡献门槛低**：不只欢迎代码，也欢迎补充案例、场景关键词、文档和现代解读。
 
 ---
 
