@@ -17,6 +17,7 @@ from typing import Any, Callable, Optional
 from core.models import HexagramContext, QuestionContext
 from agents.sufficiency_checker import SufficiencyResult
 from core.data_loader import DataLoader, DataLoaderConfig
+from core.yao_lines import get_yao_name
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,13 @@ class SceneRouter:
             )
             return self._build_hexagram_context(question, result, "llm")
 
+        # Deterministic domain fallback for local mode.  This is less precise
+        # than a scene match, but avoids presenting 乾卦 as a confident answer
+        # for every unmatched question.
+        domain_result = self._domain_fallback(question)
+        if domain_result:
+            return self._build_hexagram_context(question, domain_result, "domain")
+
         # Ultimate fallback
         logger.warning("All strategies failed, using fallback hexagram")
         return self._build_hexagram_context(question, FALLBACK_HEXAGRAM, "fallback")
@@ -193,32 +201,31 @@ class SceneRouter:
         background = question.background
         expected = question.expected_outcome
 
-        # Combine all text fields for search
-        full_text = f"{question_type} {question_text} {background} {expected}"
+        # Only user-provided content participates in keyword matching.  Adding
+        # question_type here used to make every startup question match the first
+        # mapping containing "创业", regardless of its actual stage.
+        full_text = f"{question_text} {background} {expected} {question.constraints}"
 
         best_match = None
         best_score = 0.0
 
         for scene_key, scene_data in self._scene_mapping.items():
             keywords = scene_data.get("keywords", [])
-            score = 0.0
+            keyword_score = 0.0
+            matched_keywords = 0
 
             for keyword in keywords:
                 # Count keyword occurrences
                 if keyword in full_text:
-                    score += 1.0
-                # Partial match (simple substring)
-                elif any(kw in keyword for kw in full_text.split()):
-                    score += 0.5
-                # Character-level similarity (simple)
-                else:
-                    common_chars = set(keyword) & set(full_text)
-                    if common_chars and len(common_chars) / len(set(keyword)) > 0.5:
-                        score += 0.3
+                    keyword_score += 1.0
+                    matched_keywords += 1
 
             # Normalize score
-            if keywords:
-                score = score / len(keywords)
+            if matched_keywords == 0:
+                continue
+            score = keyword_score / max(1, min(len(keywords), 2))
+            if question_type != "综合" and scene_data.get("question_type") == question_type:
+                score += 0.15
 
             if score >= self._fuzzy_threshold and score > best_score:
                 best_score = score
@@ -229,6 +236,23 @@ class SceneRouter:
                 }
 
         return best_match
+
+    def _domain_fallback(self, question: QuestionContext) -> Optional[dict[str, Any]]:
+        aliases = {
+            "职业": "职业选择",
+            "职场": "职业选择",
+            "人际": "人际关系",
+            "感情": "婚恋",
+        }
+        key = aliases.get(question.question_type, question.question_type)
+        scene = DEFAULT_SCENE_MAPPING.get(key)
+        if not scene:
+            return None
+        return {
+            **scene,
+            "match_reason": f"领域兜底: {question.question_type}",
+            "confidence": "low",
+        }
 
     def _llm_fallback(self, question: QuestionContext) -> Optional[dict[str, Any]]:
         """Layer 3: Use LLM to analyze and recommend hexagram."""
@@ -507,13 +531,19 @@ class SceneRouter:
             # Get lines for this hexagram
             lines = self._data_loader.get_lines_for_hexagram(hexagram_id)
             if lines:
+                binary_code = full_hexagram_data.get("binary_code", [])
                 # Transform lines to expected format for YaoAgentOrchestrator
                 full_hexagram_data["lines"] = [
                     {
-                        "line_name": line.get(
-                            "yao_name", f"第{line.get('position', 1)}爻"
+                        "line_name": get_yao_name(
+                            line.get("position", 1), binary_code
                         ),
-                        "yao_ci": line.get("text", ""),
+                        "yao_name": get_yao_name(
+                            line.get("position", 1), binary_code
+                        ),
+                        "yao_ci": line.get("source_text") or line.get("text", ""),
+                        "plain_explanation": line.get("plain_explanation", ""),
+                        "source": line.get("source", ""),
                         "position": line.get("position", 1),
                     }
                     for line in lines

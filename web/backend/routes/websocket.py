@@ -12,6 +12,7 @@ sys.path.insert(0, str(project_root))
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from core.llm_client import load_config
 from core.models import QuestionContext
+from core.yao_lines import get_yao_name as canonical_yao_name
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -33,22 +34,10 @@ def parse_websocket_message(data: str) -> dict[str, Any]:
 
 def get_yao_name(position: int, binary_code: list[int]) -> str:
     """Calculate correct yao name based on position and binary code."""
-    if position < 1 or position > 6:
+    try:
+        return canonical_yao_name(position, binary_code)
+    except ValueError:
         return f"第{position}爻"
-
-    if not binary_code or len(binary_code) < 6:
-        binary_code = [1, 1, 1, 1, 1, 1]
-
-    is_yang = binary_code[position - 1] == 1
-    numeral = "九" if is_yang else "六"
-
-    if position == 1:
-        return f"初{numeral}"
-    elif position == 6:
-        return f"上{numeral}"
-    else:
-        positions = ["二", "三", "四", "五"]
-        return f"{numeral}{positions[position - 2]}"
 
 
 def format_yao_ci_for_display(yao_ci: str) -> str:
@@ -167,7 +156,7 @@ def _get_session_qigua_agent(session: DialogueSession) -> Any:
         from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
 
         bridge = _get_session_bridge(session)
-        session.llm_call = bridge.create_llm_call()
+        session.llm_call = bridge.create_llm_call("qigua_agent")
         if session.llm_call:
             session.qigua_agent = QiguaAgent(
                 QiguaAgentConfig(llm_call=session.llm_call, max_rounds=6)
@@ -895,13 +884,15 @@ async def _run_yao_divination(
         )
 
         # Create LLM call wrapper
-        llm_call = bridge.create_llm_call()
+        router_llm = bridge.create_llm_call("scene_router")
+        yao_llm = bridge.create_llm_call("yao_agent")
+        reporter_llm = bridge.create_llm_call("reporter")
 
         # Scene Router - match hexagram
         router = SceneRouter(
             SceneRouterConfig(
                 scene_mapping_path=str(project_root / "data" / "scene_mapping.json"),
-                llm_call=llm_call,
+                llm_call=router_llm,
                 data_loader=bridge.data_loader,
             )
         )
@@ -913,6 +904,8 @@ async def _run_yao_divination(
             {
                 "type": "hexagram_matched",
                 "hexagram_name": hexagram_ctx.hexagram_name,
+                "hexagram_id": hexagram_ctx.hexagram_id,
+                "binary_code": hexagram_ctx.hexagram_data.get("binary_code", []),
                 "message": f"匹配卦象：{hexagram_ctx.hexagram_name}",
             },
         )
@@ -935,7 +928,7 @@ async def _run_yao_divination(
             )
             return
 
-        yao_orchestrator = YaoAgentOrchestrator(llm_call=llm_call)
+        yao_orchestrator = YaoAgentOrchestrator(llm_call=yao_llm)
 
         async def analyze_one_yao(index: int, pos: YaoPosition) -> YaoAnalysis:
             line_data_item = lines[index]
@@ -1029,7 +1022,7 @@ async def _run_yao_divination(
             },
         )
 
-        reporter = ReporterAgent(ReporterConfig(llm_call=llm_call))
+        reporter = ReporterAgent(ReporterConfig(llm_call=reporter_llm))
         # Run in thread pool to not block event loop
         report = await asyncio.to_thread(
             reporter.generate_report, question_ctx, hexagram_ctx, yao_analyses
@@ -1056,7 +1049,19 @@ async def _run_yao_divination(
             "key_risks": report.key_risks,
             "timing_judgment": report.timing_judgment,
             "next_steps": report.next_steps,
+            "decision_tendency": report.decision_tendency,
+            "core_reasons": report.core_reasons,
+            "option_comparison": report.option_comparison,
+            "decision_conditions": report.decision_conditions,
+            "stop_conditions": report.stop_conditions,
+            "missing_information": report.missing_information,
+            "review_trigger": report.review_trigger,
+            "confidence": report.confidence,
             "yao_summary": yao_summary,
+            "hexagram": {
+                "id": report.hexagram.hexagram_id,
+                "name": report.hexagram.hexagram_name,
+            },
         }
         await manager.send_personal(
             websocket,

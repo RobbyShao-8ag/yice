@@ -15,7 +15,11 @@ marked.setOptions({
 // Helper function to render Markdown
 const renderMarkdown = (text: string): string => {
   if (!text || text === '待补充') return ''
-  return marked.parse(text) as string
+  const escaped = text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+  return marked.parse(escaped) as string
 }
 
 // Helper function to check if content is meaningful
@@ -38,16 +42,6 @@ const formatYaoCi = (text: string): string => {
 
 const router = useRouter()
 
-// 六爻数据结构（用于图形显示）
-interface YaoData {
-  position: string
-  name: string
-  type: 'yang' | 'yin'
-  text: string
-  interpretation: string
-  advice: string
-}
-
 // 组件状态
 const isRunning = ref(false)
 const currentYaoIndex = ref(-1)
@@ -56,11 +50,21 @@ const activeYaoPositions = ref<Set<number>>(new Set())
 const completedYaoPositions = ref<Set<number>>(new Set())
 const showReportModal = ref(false)
 const hexagramName = ref('')
+const hexagramId = ref<number | null>(null)
+const hexagramBinaryCode = ref<number[]>([])
 const finalReport = ref<{
   overall_advice: string
   key_risks: string | string[]
   timing_judgment: string
   next_steps: string[]
+  decision_tendency: string
+  core_reasons: string[]
+  option_comparison: Array<{ option: string; benefit: string; cost_or_risk: string }>
+  decision_conditions: string[]
+  stop_conditions: string[]
+  missing_information: string[]
+  review_trigger: string
+  confidence: string
   yao_summary?: {
     position: number
     line_name: string
@@ -92,6 +96,9 @@ const progressText = computed(() => {
   return statusText.value
 })
 const isYaoCompleted = (position: number): boolean => completedYaoPositions.value.has(position)
+const getYaoType = (position: number): 'yang' | 'yin' => (
+  hexagramBinaryCode.value[position - 1] === 0 ? 'yin' : 'yang'
+)
 
 // 六爻圆环尺寸（由内到外，单位：px）
 const ringSizes = [120, 175, 230, 285, 340, 395]
@@ -104,58 +111,6 @@ const yaoColors = [
   { color: 'var(--yao-4-color)', glow: 'var(--glow-yao-4)' },
   { color: 'var(--yao-5-color)', glow: 'var(--glow-yao-5)' },
   { color: 'var(--yao-6-color)', glow: 'var(--glow-yao-6)' }
-]
-
-// Mock 六爻数据（仅用于图形显示，实际数据来自 WebSocket）
-const yaoDataList: YaoData[] = [
-  {
-    position: '初爻',
-    name: '环境感知',
-    type: 'yang',
-    text: '潜龙勿用',
-    interpretation: '当前处于积累潜伏期，宜静心修炼内功',
-    advice: '不宜冒进，继续沉淀'
-  },
-  {
-    position: '二爻',
-    name: '资源配置',
-    type: 'yin',
-    text: '见龙在田，利见大人',
-    interpretation: '时机逐渐成熟，可寻求贵人相助',
-    advice: '把握时机，适度展现才能'
-  },
-  {
-    position: '三爻',
-    name: '风险评估',
-    type: 'yang',
-    text: '君子终日乾乾，夕惕若厉',
-    interpretation: '处于关键转折点，需要谨慎行事',
-    advice: '保持警觉，稳扎稳打'
-  },
-  {
-    position: '四爻',
-    name: '策略执行',
-    type: 'yin',
-    text: '或跃在渊，无咎',
-    interpretation: '进退维谷之际，需审时度势',
-    advice: '灵活应变，不宜固执'
-  },
-  {
-    position: '五爻',
-    name: '长期规划',
-    type: 'yang',
-    text: '飞龙在天，利见大人',
-    interpretation: '大势已成，正是展翅高飞之时',
-    advice: '把握大局，乘势而为'
-  },
-  {
-    position: '上爻',
-    name: '结果复盘',
-    type: 'yang',
-    text: '亢龙有悔',
-    interpretation: '盛极而衰，需知进退之道',
-    advice: '居安思危，留有余地'
-  }
 ]
 
 // 处理 WebSocket 消息
@@ -175,6 +130,8 @@ const handleDivinationMessage = (data: WebSocketMessage) => {
       break
     case 'hexagram_matched':
       hexagramName.value = divinationData.hexagram_name || ''
+      hexagramId.value = divinationData.hexagram_id ?? null
+      hexagramBinaryCode.value = divinationData.binary_code || []
       statusText.value = `已匹配卦象：${divinationData.hexagram_name}`
       break
     case 'yao_start':
@@ -213,8 +170,17 @@ const handleDivinationMessage = (data: WebSocketMessage) => {
           key_risks: divinationData.report.key_risks,
           timing_judgment: divinationData.report.timing_judgment,
           next_steps: divinationData.report.next_steps,
+          decision_tendency: divinationData.report.decision_tendency,
+          core_reasons: divinationData.report.core_reasons || [],
+          option_comparison: divinationData.report.option_comparison || [],
+          decision_conditions: divinationData.report.decision_conditions || [],
+          stop_conditions: divinationData.report.stop_conditions || [],
+          missing_information: divinationData.report.missing_information || [],
+          review_trigger: divinationData.report.review_trigger || '',
+          confidence: divinationData.report.confidence || '中',
           yao_summary: divinationData.report.yao_summary,
         }
+        void saveHistory()
         showReportModal.value = true
       }
       break
@@ -253,6 +219,7 @@ const startDivination = () => {
       currentYaoIndex.value = -1
       activeYaoPositions.value = new Set()
       completedYaoPositions.value = new Set()
+      finalReport.value = null
       statusText.value = '开始推演...'
     } else {
       console.error('Failed to connect to divination endpoint')
@@ -274,16 +241,81 @@ const restartDivination = () => {
   router.push('/')
 }
 
-// 复制输出
-const copyOutput = () => {
-  // TODO: 实现复制功能
-  alert('复制功能开发中')
+const buildReportMarkdown = (): string => {
+  if (!finalReport.value) return ''
+  const report = finalReport.value
+  return [
+    '# 决策参考报告',
+    '',
+    `问题：${dialogueStore.getQuestionContext()?.raw_question || ''}`,
+    `卦象：${hexagramName.value}${hexagramId.value ? `（第${hexagramId.value}卦）` : ''}`,
+    '',
+    `## 决策倾向\n\n${report.decision_tendency}（置信度：${report.confidence}）`,
+    '',
+    '## 核心理由',
+    ...report.core_reasons.map(item => `- ${item}`),
+    '',
+    `## 综合建议\n\n${report.overall_advice}`,
+    '',
+    `## 关键风险\n\n${keyRisksList.value.map(item => `- ${item}`).join('\n')}`,
+    '',
+    '## 推进条件',
+    ...report.decision_conditions.map(item => `- ${item}`),
+    '',
+    '## 停止条件',
+    ...report.stop_conditions.map(item => `- ${item}`),
+    '',
+    '## 下一步行动',
+    ...report.next_steps.map((item, index) => `${index + 1}. ${item}`),
+    '',
+    `## 复评触发点\n\n${report.review_trigger}`,
+    '',
+    '> 本报告仅供决策参考，不替代专业意见或个人责任。',
+  ].join('\n')
 }
 
-// 导出输出
+const copyOutput = async () => {
+  const markdown = buildReportMarkdown()
+  if (!markdown) return alert('报告生成后才能复制')
+  await navigator.clipboard.writeText(markdown)
+  alert('报告已复制')
+}
+
 const exportOutput = () => {
-  // TODO: 实现导出功能
-  alert('导出功能开发中')
+  const markdown = buildReportMarkdown()
+  if (!markdown) return alert('报告生成后才能导出')
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `易策决策参考-${new Date().toISOString().slice(0, 10)}.md`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+const saveHistory = async () => {
+  if (!finalReport.value) return
+  const question = dialogueStore.getQuestionContext()?.raw_question || ''
+  try {
+    await fetch('/api/history/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        hexagram: { id: hexagramId.value, name: hexagramName.value },
+        yao_analysis: outputs.value.map(output => ({
+          position: output.position,
+          line_name: output.lineName,
+          analysis: output.analysis,
+          advice: output.advice,
+          risks: output.risks,
+        })),
+        report: finalReport.value,
+      }),
+    })
+  } catch (error) {
+    console.error('保存历史记录失败:', error)
+  }
 }
 
 // 组件挂载时注册消息处理
@@ -347,7 +379,7 @@ onUnmounted(() => {
             <svg class="yao-svg" :viewBox="`0 0 ${size} ${size}`">
               <!-- 阳爻：一条长线 -->
               <line
-                v-if="yaoDataList[index]?.type === 'yang'"
+                v-if="getYaoType(index + 1) === 'yang'"
                 class="yao-line"
                 :class="{ yang: isYaoCompleted(index + 1) }"
                 :x1="size * 0.25"
@@ -468,6 +500,21 @@ onUnmounted(() => {
         
         <div class="modal-body">
           <div v-if="finalReport" class="report-sections">
+            <div class="report-section">
+              <h3 class="section-title">决策倾向</h3>
+              <div class="section-content">
+                <strong>{{ finalReport.decision_tendency }}</strong>
+                <span>（置信度：{{ finalReport.confidence }}）</span>
+              </div>
+            </div>
+
+            <div v-if="finalReport.core_reasons.length" class="report-section">
+              <h3 class="section-title">核心理由</h3>
+              <ul class="next-steps">
+                <li v-for="(reason, index) in finalReport.core_reasons" :key="index">{{ reason }}</li>
+              </ul>
+            </div>
+
             <!-- 六爻摘要 -->
             <div v-if="finalReport.yao_summary && finalReport.yao_summary.length > 0" class="report-section">
               <h3 class="section-title">六爻分析概要</h3>
@@ -500,6 +547,41 @@ onUnmounted(() => {
             <div class="report-section">
               <h3 class="section-title">时机判断</h3>
               <div class="section-content" v-html="renderMarkdown(finalReport.timing_judgment)"></div>
+            </div>
+
+            <div v-if="finalReport.option_comparison.length" class="report-section">
+              <h3 class="section-title">选项比较</h3>
+              <ul class="next-steps">
+                <li v-for="(option, index) in finalReport.option_comparison" :key="index">
+                  <strong>{{ option.option }}</strong>：{{ option.benefit }}；{{ option.cost_or_risk }}
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="finalReport.decision_conditions.length" class="report-section">
+              <h3 class="section-title">推进条件</h3>
+              <ul class="next-steps">
+                <li v-for="(item, index) in finalReport.decision_conditions" :key="index">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div v-if="finalReport.stop_conditions.length" class="report-section">
+              <h3 class="section-title">停止条件</h3>
+              <ul class="risk-list">
+                <li v-for="(item, index) in finalReport.stop_conditions" :key="index">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div v-if="finalReport.missing_information.length" class="report-section">
+              <h3 class="section-title">仍需确认的信息</h3>
+              <ul class="next-steps">
+                <li v-for="(item, index) in finalReport.missing_information" :key="index">{{ item }}</li>
+              </ul>
+            </div>
+
+            <div class="report-section">
+              <h3 class="section-title">复评触发点</h3>
+              <div class="section-content">{{ finalReport.review_trigger }}</div>
             </div>
             
             <div v-if="finalReport.next_steps && finalReport.next_steps.length > 0" class="report-section">

@@ -28,6 +28,17 @@ interface HistoryDetail {
       key_risks: string
       timing_judgment: string
       next_steps: string[]
+      decision_tendency?: string
+      decision_conditions?: string[]
+      stop_conditions?: string[]
+      review_trigger?: string
+    }
+    feedback?: {
+      decision_taken?: string
+      outcome?: string
+      usefulness_rating?: number
+      notes?: string
+      reviewed_at?: string
     }
   }
   created_at: string
@@ -38,6 +49,11 @@ const historyList = ref<HistoryItem[]>([])
 const selectedRecord = ref<HistoryDetail | null>(null)
 const viewingDetail = ref(false)
 const deleting = ref(false)
+const savingFeedback = ref(false)
+const feedbackDecision = ref('')
+const feedbackOutcome = ref('')
+const feedbackRating = ref(0)
+const feedbackNotes = ref('')
 
 onMounted(async () => {
   await loadHistory()
@@ -64,6 +80,11 @@ async function viewDetail(id: string) {
     
     if (res.ok) {
       selectedRecord.value = data
+      const feedback = data.content?.feedback || {}
+      feedbackDecision.value = feedback.decision_taken || ''
+      feedbackOutcome.value = feedback.outcome || ''
+      feedbackRating.value = feedback.usefulness_rating || 0
+      feedbackNotes.value = feedback.notes || ''
       viewingDetail.value = true
     } else {
       alert(`加载失败：${data.detail || '未知错误'}`)
@@ -106,9 +127,6 @@ async function deleteRecord(id: string, index: number) {
     deleting.value = false
   }
 }
-
-  viewingDetail.value = false
-  selectedRecord.value = null
 function formatDate(isoString: string): string {
   const date = new Date(isoString)
   return date.toLocaleString('zh-CN', {
@@ -123,6 +141,31 @@ function formatDate(isoString: string): string {
 function goBack() {
   viewingDetail.value = false
   selectedRecord.value = null
+}
+
+async function saveFeedback() {
+  if (!selectedRecord.value) return
+  savingFeedback.value = true
+  try {
+    const res = await fetch(`/api/history/${selectedRecord.value.id}/feedback`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision_taken: feedbackDecision.value,
+        outcome: feedbackOutcome.value,
+        usefulness_rating: feedbackRating.value || undefined,
+        notes: feedbackNotes.value,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || '保存失败')
+    selectedRecord.value.content.feedback = data.feedback
+    alert('复盘反馈已保存')
+  } catch (error) {
+    alert(`保存失败：${error instanceof Error ? error.message : '未知错误'}`)
+  } finally {
+    savingFeedback.value = false
+  }
 }
 </script>
 
@@ -244,6 +287,10 @@ function goBack() {
           <section class="detail-section">
             <h2 class="section-title">决策建议</h2>
             <div class="report-content">
+              <div class="report-item" v-if="selectedRecord.content.report.decision_tendency">
+                <h4>决策倾向</h4>
+                <p>{{ selectedRecord.content.report.decision_tendency }}</p>
+              </div>
               <div class="report-item">
                 <h4>总体建议</h4>
                 <p>{{ selectedRecord.content.report.overall_advice }}</p>
@@ -264,6 +311,34 @@ function goBack() {
                   </li>
                 </ul>
               </div>
+              <div class="report-item" v-if="selectedRecord.content.report.decision_conditions?.length">
+                <h4>推进条件</h4>
+                <ul><li v-for="item in selectedRecord.content.report.decision_conditions" :key="item">{{ item }}</li></ul>
+              </div>
+              <div class="report-item" v-if="selectedRecord.content.report.stop_conditions?.length">
+                <h4>停止条件</h4>
+                <ul><li v-for="item in selectedRecord.content.report.stop_conditions" :key="item">{{ item }}</li></ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h2 class="section-title">结果复盘</h2>
+            <div class="report-content">
+              <label>最终采取的决定</label>
+              <input v-model="feedbackDecision" class="feedback-input" placeholder="例如：先验证14天，暂不全职" />
+              <label>实际结果</label>
+              <input v-model="feedbackOutcome" class="feedback-input" placeholder="例如：一位客户转为付费" />
+              <label>这份报告有多大帮助（1-5）</label>
+              <select v-model.number="feedbackRating" class="feedback-input">
+                <option :value="0">暂不评分</option>
+                <option v-for="rating in 5" :key="rating" :value="rating">{{ rating }}</option>
+              </select>
+              <label>补充记录</label>
+              <textarea v-model="feedbackNotes" class="feedback-input" rows="3" placeholder="哪些判断准确，哪些需要改进"></textarea>
+              <button class="btn btn-primary" :disabled="savingFeedback" @click="saveFeedback">
+                {{ savingFeedback ? '保存中...' : '保存复盘' }}
+              </button>
             </div>
           </section>
           
@@ -541,6 +616,18 @@ function goBack() {
 
 .report-item {
   margin-bottom: 20px;
+}
+
+.feedback-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font: inherit;
 }
 
 .report-item:last-child {

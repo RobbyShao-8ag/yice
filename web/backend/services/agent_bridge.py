@@ -20,6 +20,7 @@ class AgentBridgeService:
     def __init__(self):
         self.data_loader: Optional[DataLoader] = None
         self.llm_client: Optional[LLMClient] = None
+        self.llm_clients: dict[str, LLMClient] = {}
         self._initialized = False
 
     def initialize(self, models_config: Optional[dict[str, Any]] = None) -> None:
@@ -31,18 +32,28 @@ class AgentBridgeService:
 
             if models_config:
                 providers = models_config.get("providers", {})
-                if providers:
-                    provider_name = list(providers.keys())[0]
-                    provider = providers[provider_name]
-                    self.llm_client = LLMClient(
+                for agent_name, agent_config in models_config.get("agents", {}).items():
+                    provider_name = agent_config.get("provider")
+                    provider = providers.get(provider_name, {})
+                    model = agent_config.get("model")
+                    api_key = provider.get("api_key", "")
+                    if not provider_name or not model or not api_key:
+                        continue
+                    self.llm_clients[agent_name] = LLMClient(
                         LLMConfig(
                             provider=provider_name,
-                            api_key=provider.get("api_key", ""),
+                            api_key=api_key,
                             base_url=provider.get("base_url", "https://api.openai.com"),
-                            model=provider.get("default_model", "gpt-3.5-turbo"),
+                            model=model,
                         )
                     )
-                    logger.info(f"LLM client initialized for provider: {provider_name}")
+                    logger.info(
+                        "LLM client initialized for %s: %s/%s",
+                        agent_name,
+                        provider_name,
+                        model,
+                    )
+                self.llm_client = self.llm_clients.get("scene_router")
 
             self._initialized = True
             logger.info("AgentBridgeService initialized successfully")
@@ -50,13 +61,16 @@ class AgentBridgeService:
             logger.error(f"Failed to initialize AgentBridgeService: {e}")
             self._initialized = False
 
-    def create_llm_call(self) -> Optional[Callable[[str, str], str]]:
+    def create_llm_call(
+        self, agent_name: str = "scene_router"
+    ) -> Optional[Callable[[str, str], str]]:
         """Create LLM callable wrapper."""
-        if not self.llm_client:
+        client = self.llm_clients.get(agent_name) or self.llm_client
+        if not client:
             return None
 
         def llm_call(system_prompt: str, user_prompt: str) -> str:
-            return self.llm_client.chat(system_prompt, user_prompt)
+            return client.chat(system_prompt, user_prompt)
 
         return llm_call
 
@@ -84,7 +98,10 @@ class AgentBridgeService:
             from agents.scene_router import SceneRouter, SceneRouterConfig
             from agents.yao_agents import YaoAgentOrchestrator
 
-            llm_call = self.create_llm_call()
+            qigua_llm = self.create_llm_call("qigua_agent")
+            router_llm = self.create_llm_call("scene_router")
+            yao_llm = self.create_llm_call("yao_agent")
+            reporter_llm = self.create_llm_call("reporter")
 
             if websocket_callback:
                 websocket_callback(
@@ -116,7 +133,7 @@ class AgentBridgeService:
                     scene_mapping_path=str(
                         project_root / "data" / "scene_mapping.json"
                     ),
-                    llm_call=llm_call,
+                    llm_call=router_llm,
                     data_loader=self.data_loader,
                 )
             )
@@ -136,7 +153,7 @@ class AgentBridgeService:
                     {"stage": "yao", "status": "started", "message": "六爻分析中..."}
                 )
 
-            yao_orchestrator = YaoAgentOrchestrator(llm_call=llm_call)
+            yao_orchestrator = YaoAgentOrchestrator(llm_call=yao_llm)
             yao_analyses = yao_orchestrator.analyze_all(hexagram_ctx)
 
             if websocket_callback:
@@ -157,7 +174,7 @@ class AgentBridgeService:
                     }
                 )
 
-            reporter = ReporterAgent(ReporterConfig(llm_call=llm_call))
+            reporter = ReporterAgent(ReporterConfig(llm_call=reporter_llm))
             report = reporter.generate_report(question_ctx, hexagram_ctx, yao_analyses)
 
             if websocket_callback:

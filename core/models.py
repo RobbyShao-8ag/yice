@@ -161,6 +161,14 @@ class DecisionReport:
     timing_judgment: str  # LLM generated: timing assessment
     next_steps: list[str]  # LLM generated: actionable next steps
     hu_gua_analysis: Optional[str] = None  # LLM generated: hu_gua interpretation
+    decision_tendency: str = "有条件推进"
+    core_reasons: list[str] = field(default_factory=list)
+    option_comparison: list[dict[str, str]] = field(default_factory=list)
+    decision_conditions: list[str] = field(default_factory=list)
+    stop_conditions: list[str] = field(default_factory=list)
+    missing_information: list[str] = field(default_factory=list)
+    review_trigger: str = "完成第一轮验证后复评"
+    confidence: str = "中"
 
     def to_markdown(self) -> str:
         """Export report as Markdown."""
@@ -169,6 +177,13 @@ class DecisionReport:
 
         md += "## 卦象\n\n"
         md += f"{self.hexagram.hexagram_name}（第{self.hexagram.hexagram_id}卦）\n\n"
+
+        md += f"## 决策倾向\n\n**{self.decision_tendency}**\n\n"
+        if self.core_reasons:
+            md += "### 核心理由\n\n"
+            for reason in self.core_reasons:
+                md += f"- {reason}\n"
+            md += "\n"
 
         md += "## 六爻分析\n\n"
         for yao in self.yao_analyses:
@@ -183,6 +198,24 @@ class DecisionReport:
         md += f"## 综合建议\n\n{self.overall_advice}\n\n"
         md += f"## 关键风险\n\n{self.key_risks}\n\n"
         md += f"## 时机判断\n\n{self.timing_judgment}\n\n"
+
+        if self.decision_conditions:
+            md += "## 推进条件\n\n"
+            for item in self.decision_conditions:
+                md += f"- {item}\n"
+            md += "\n"
+        if self.stop_conditions:
+            md += "## 停止条件\n\n"
+            for item in self.stop_conditions:
+                md += f"- {item}\n"
+            md += "\n"
+        if self.missing_information:
+            md += "## 仍需确认的信息\n\n"
+            for item in self.missing_information:
+                md += f"- {item}\n"
+            md += "\n"
+        md += f"## 复评触发点\n\n{self.review_trigger}\n\n"
+        md += f"**判断置信度**：{self.confidence}\n\n"
 
         md += "## 下一步行动\n\n"
         for i, step in enumerate(self.next_steps, 1):

@@ -1,6 +1,7 @@
 """Test data quality for hexagram and lines JSON files."""
 
 import json
+import re
 import pytest
 from pathlib import Path
 
@@ -38,12 +39,12 @@ class TestLinesDataQuality:
                     f"Placeholder '{placeholder}' found in line {line['id']}"
                 )
 
-    def test_text_minimum_length(self):
-        """Each line text should have meaningful content (> 20 chars)."""
+    def test_text_is_not_empty(self):
+        """Canonical lines may be very short (for example, '包羞。')."""
         lines = load_lines()
         for line in lines:
             text = line.get("text", "")
-            assert len(text) > 20, f"Line {line['id']} text too short: {len(text)} chars"
+            assert len(text.strip()) >= 2, f"Line {line['id']} is empty"
 
     def test_required_fields(self):
         """Each line should have required fields."""
@@ -66,6 +67,31 @@ class TestLinesDataQuality:
         for line in lines:
             hex_id = line.get("hexagram_id", 0)
             assert 1 <= hex_id <= 64, f"Invalid hexagram_id {hex_id} in line {line['id']}"
+
+    def test_source_text_is_chinese_and_traceable(self):
+        """Runtime line text should be canonical Chinese with a source URL."""
+        for line in load_lines():
+            assert re.search(r"[\u4e00-\u9fff]", line.get("source_text", "")), (
+                f"Line {line['id']} has no Chinese source text"
+            )
+            assert line.get("text") == line.get("source_text")
+            assert line.get("source", "").startswith(
+                "https://zh.wikisource.org/wiki/"
+            )
+            assert "-{" not in line["source_text"]
+            assert "{{" not in line["source_text"]
+
+    def test_yao_names_match_hexagram_binary_code(self):
+        """Stored display names must agree with the binary source of truth."""
+        from core.yao_lines import get_yao_name
+
+        hexagrams = load_hexagrams()
+        for line in load_lines():
+            binary_code = hexagrams[str(line["hexagram_id"])]["binary_code"]
+            expected = get_yao_name(line["position"], binary_code)
+            assert line["yao_name"] == expected, (
+                f"Line {line['id']} expected {expected}, got {line['yao_name']}"
+            )
 
 
 class TestHexagramsDataQuality:

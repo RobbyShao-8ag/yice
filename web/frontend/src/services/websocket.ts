@@ -28,6 +28,8 @@ export interface DivinationMessage {
   risks?: string
   stage?: 'qigua' | 'router' | 'yao' | 'reporter'
   hexagram_name?: string
+  hexagram_id?: number
+  binary_code?: number[]
   report?: DecisionReport
   message?: string
   status?: string
@@ -50,6 +52,15 @@ export interface DecisionReport {
   key_risks: string
   timing_judgment: string
   next_steps: string[]
+  decision_tendency: string
+  core_reasons: string[]
+  option_comparison: Array<{ option: string; benefit: string; cost_or_risk: string }>
+  decision_conditions: string[]
+  stop_conditions: string[]
+  missing_information: string[]
+  review_trigger: string
+  confidence: string
+  hexagram?: { id: number; name: string }
   yao_summary?: {
     position: number
     line_name: string

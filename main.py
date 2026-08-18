@@ -25,7 +25,7 @@ from core.data_loader import DataLoader, DataLoaderConfig
 from core.errors import DataError, LLMCallError, PartialFailureError
 from core.llm_client import LLMClient, LLMConfig, load_config
 from core.logging_config import setup_logging
-from core.models import DecisionReport, HexagramContext, QuestionContext
+from core.models import DecisionReport, QuestionContext
 from core.config_validator import ConfigValidator
 from agents.qigua_agent import QiguaAgent, QiguaAgentConfig
 from agents.scene_router import SceneRouter, SceneRouterConfig
@@ -148,6 +148,20 @@ def create_llm_client(config: dict, agent_name: str) -> Optional[LLMClient]:
     )
 
 
+def create_agent_llm_calls(
+    config: Optional[dict],
+) -> dict[str, Callable[[str, str], str]]:
+    """Create the independently configured callable for each pipeline role."""
+    if not config:
+        return {}
+    calls: dict[str, Callable[[str, str], str]] = {}
+    for agent_name in ("qigua_agent", "scene_router", "yao_agent", "reporter"):
+        client = create_llm_client(config, agent_name)
+        if client:
+            calls[agent_name] = create_llm_call(client)
+    return calls
+
+
 def build_question_context(
     raw_question: str, llm_call: Optional[Callable[[str, str], str]]
 ) -> QuestionContext:
@@ -242,6 +256,7 @@ def run_pipeline(
     data_loader: DataLoader,
     llm_call: Optional[Callable[[str, str], str]],
     use_qigua: bool = True,
+    agent_llm_calls: Optional[dict[str, Callable[[str, str], str]]] = None,
 ) -> Optional[DecisionReport]:
     """Run the full decision pipeline.
 
@@ -261,15 +276,20 @@ def run_pipeline(
         DecisionReport or None if pipeline fails.
     """
     try:
+        calls = agent_llm_calls or {}
+        qigua_llm = calls.get("qigua_agent", llm_call)
+        router_llm = calls.get("scene_router", llm_call)
+        yao_llm = calls.get("yao_agent", llm_call)
+        reporter_llm = calls.get("reporter", llm_call)
         # Stage 1: Build question context
-        if use_qigua and llm_call:
+        if use_qigua and qigua_llm:
             print("\n[1/4] 起卦官对话中...")
-            qigua_agent = QiguaAgent(QiguaAgentConfig(llm_call=llm_call))
+            qigua_agent = QiguaAgent(QiguaAgentConfig(llm_call=qigua_llm))
             question_ctx = qigua_agent.collect_context(question)
             logger.info(f"Question type: {question_ctx.question_type}")
         else:
             print("\n[1/4] 本地问题解析中...")
-            question_ctx = build_question_context(question, llm_call)
+            question_ctx = build_question_context(question, qigua_llm)
             logger.info(f"Question type: {question_ctx.question_type}")
 
         # Stage 2: Route to hexagram
@@ -277,34 +297,11 @@ def run_pipeline(
         router = SceneRouter(
             SceneRouterConfig(
                 scene_mapping_path="data/scene_mapping.json",
-                llm_call=llm_call,
+                llm_call=router_llm,
+                data_loader=data_loader,
             )
         )
         hexagram_ctx = router.route(question_ctx)
-
-        # Enrich hexagram data with lines
-        hexagram_id = hexagram_ctx.hexagram_id
-        hexagram_data = data_loader.get_hexagram(hexagram_id)
-        lines = data_loader.get_lines_for_hexagram(hexagram_id)
-
-        if hexagram_data:
-            hexagram_data = dict(hexagram_data)
-            hexagram_data["lines"] = [
-                {
-                    "line_name": line.get(
-                        "yao_name", f"第{line.get('position', i + 1)}爻"
-                    ),
-                    "yao_ci": line.get("text", ""),
-                }
-                for i, line in enumerate(lines)
-            ]
-            hexagram_ctx = HexagramContext(
-                question=hexagram_ctx.question,
-                hexagram_id=hexagram_ctx.hexagram_id,
-                hexagram_name=hexagram_ctx.hexagram_name,
-                match_reason=hexagram_ctx.match_reason,
-                hexagram_data=hexagram_data,
-            )
 
         print(
             f"      卦象：{hexagram_ctx.hexagram_name}（第{hexagram_ctx.hexagram_id}卦）"
@@ -313,7 +310,7 @@ def run_pipeline(
 
         # Stage 3: Analyze 6 yao positions
         print("[3/4] 六爻分析...")
-        yao_orchestrator = YaoAgentOrchestrator(llm_call=llm_call)
+        yao_orchestrator = YaoAgentOrchestrator(llm_call=yao_llm)
 
         try:
             yao_analyses = yao_orchestrator.analyze_all(hexagram_ctx)
@@ -333,7 +330,7 @@ def run_pipeline(
 
         # Stage 4: Generate report
         print("[4/4] 生成报告中...")
-        reporter = ReporterAgent(ReporterConfig(llm_call=llm_call))
+        reporter = ReporterAgent(ReporterConfig(llm_call=reporter_llm))
         report = reporter.generate_report(question_ctx, hexagram_ctx, yao_analyses)
 
         return report
@@ -367,6 +364,11 @@ def print_report(report: DecisionReport):
     print(
         f"\n【卦象】{report.hexagram.hexagram_name}（第{report.hexagram.hexagram_id}卦）"
     )
+    print(f"\n【决策倾向】{report.decision_tendency}（置信度：{report.confidence}）")
+    if report.core_reasons:
+        print("\n【核心理由】")
+        for reason in report.core_reasons:
+            print(f"  - {reason}")
 
     print("\n" + "-" * 60)
     print("                    六 爻 分 析")
@@ -390,6 +392,23 @@ def print_report(report: DecisionReport):
     print(f"\n【综合建议】{report.overall_advice}")
     print(f"\n【关键风险】{report.key_risks}")
     print(f"\n【时机判断】{report.timing_judgment}")
+
+    if report.decision_conditions:
+        print("\n【推进条件】")
+        for item in report.decision_conditions:
+            print(f"  - {item}")
+
+    if report.stop_conditions:
+        print("\n【停止条件】")
+        for item in report.stop_conditions:
+            print(f"  - {item}")
+
+    if report.missing_information:
+        print("\n【仍需确认】")
+        for item in report.missing_information:
+            print(f"  - {item}")
+
+    print(f"\n【复评触发点】{report.review_trigger}")
 
     print("\n【下一步行动】")
     for i, step in enumerate(report.next_steps, 1):
@@ -432,9 +451,8 @@ def main():
         print(f"   原因：{e}")
         print("   请把 models.json 中的示例 API Key 替换为真实 Key 后再启用 LLM。")
 
-    # Create LLM client (use scene_router config as default)
-    llm_client = create_llm_client(models_config, "scene_router") if models_config else None
-    llm_call = create_llm_call(llm_client) if llm_client else None
+    agent_llm_calls = create_agent_llm_calls(models_config)
+    llm_call = agent_llm_calls.get("scene_router")
 
     if llm_call is None:
         print("本地演示模式：使用内置卦象、爻辞和规则生成决策参考。")
@@ -466,7 +484,13 @@ def main():
                 return 0
 
             # Run pipeline
-            report = run_pipeline(question, data_loader, llm_call, use_qigua=True)
+            report = run_pipeline(
+                question,
+                data_loader,
+                llm_call,
+                use_qigua=True,
+                agent_llm_calls=agent_llm_calls,
+            )
 
             if report:
                 print_report(report)

@@ -145,6 +145,98 @@ def test_hu_gua_calculation_integration():
     assert hu_gua_id == 1
 
 
+def test_reporter_uses_binary_code_for_hu_gua():
+    """Transformed line dictionaries must not collapse every mutual gua to 64."""
+    question = QuestionContext(
+        raw_question="测试",
+        question_type="创业",
+        background="",
+        constraints="",
+        expected_outcome="",
+        time_horizon="中期",
+        risk_tolerance="中",
+    )
+    hexagram = HexagramContext(
+        question=question,
+        hexagram_id=3,
+        hexagram_name="屯",
+        match_reason="测试",
+        hexagram_data={
+            "binary_code": [1, 0, 0, 0, 1, 0],
+            "lines": [
+                {"line_name": name, "yao_ci": "测试爻辞"}
+                for name in ["初九", "六二", "六三", "六四", "九五", "上六"]
+            ],
+        },
+    )
+    section = ReporterAgent(ReporterConfig())._generate_hu_gua_analysis(hexagram)
+    assert "互卦：第60卦" in section
+
+
+def test_local_startup_report_has_decision_contract():
+    question = QuestionContext(
+        raw_question="有原型和两个试用客户，现金流只够四个月，是否全职投入？",
+        question_type="创业",
+        background="",
+        constraints="现金流只够四个月",
+        expected_outcome="判断是否全职",
+        time_horizon="14天",
+        risk_tolerance="中",
+    )
+    hexagram = HexagramContext(
+        question=question,
+        hexagram_id=3,
+        hexagram_name="屯",
+        match_reason="现金跑道验证",
+        hexagram_data={
+            "binary_code": [1, 0, 0, 0, 1, 0],
+            "lines": [
+                {"line_name": name, "yao_ci": "测试"}
+                for name in ["初九", "六二", "六三", "六四", "九五", "上六"]
+            ],
+        },
+    )
+    analyses = [
+        YaoAnalysis(i, f"第{i}爻", "测试", "分析", "建议", "风险")
+        for i in range(1, 7)
+    ]
+    report = ReporterAgent(ReporterConfig()).generate_report(
+        question, hexagram, analyses
+    )
+    assert report.decision_tendency == "有条件推进"
+    assert len(report.decision_conditions) >= 3
+    assert len(report.stop_conditions) >= 3
+    assert "14 天" in report.review_trigger
+    assert any("付费" in item for item in report.missing_information)
+
+
+def test_local_health_report_defers_to_professional_care():
+    question = QuestionContext(
+        raw_question="身体不舒服是否继续高强度工作？",
+        question_type="健康",
+        background="",
+        constraints="",
+        expected_outcome="",
+        time_horizon="当前",
+        risk_tolerance="中",
+    )
+    hexagram = HexagramContext(
+        question=question,
+        hexagram_id=52,
+        hexagram_name="艮",
+        match_reason="健康停止",
+        hexagram_data={
+            "binary_code": [0, 0, 1, 0, 0, 1],
+            "lines": [{"line_name": "初六", "yao_ci": "测试"}] * 6,
+        },
+    )
+    analyses = [YaoAnalysis(i, f"第{i}爻", "测试", "分析", "建议", "风险") for i in range(1, 7)]
+    report = ReporterAgent(ReporterConfig()).generate_report(question, hexagram, analyses)
+    assert "就医" in report.overall_advice
+    assert any("危险信号" in item for item in report.missing_information)
+    assert "专业医疗评估" in report.review_trigger
+
+
 def test_hu_gua_trigram_extraction():
     """Test trigram extraction from yao lines."""
     lower = [1, 1, 1]

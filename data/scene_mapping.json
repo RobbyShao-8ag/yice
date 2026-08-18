@@ -53,6 +53,138 @@
     "hexagram_id": 6,
     "hexagram_name": "讼"
   },
+  "创业-现金跑道-验证": {
+    "question_type": "创业",
+    "keywords": ["现金流", "试用客户", "全职投入", "烧钱"],
+    "hexagram_id": 3,
+    "hexagram_name": "屯"
+  },
+  "创业-产品验证-等待": {
+    "question_type": "创业",
+    "keywords": ["产品验证", "付费意愿", "最小可行产品", "MVP"],
+    "hexagram_id": 5,
+    "hexagram_name": "需"
+  },
+  "创业-增长扩张-上升": {
+    "question_type": "创业",
+    "keywords": ["已有收入", "稳定收入", "增长", "扩招", "扩大团队", "团队扩大"],
+    "hexagram_id": 46,
+    "hexagram_name": "升"
+  },
+  "创业-转型调整-变革": {
+    "question_type": "创业",
+    "keywords": ["转型", "换方向", "商业模式", "调整方向"],
+    "hexagram_id": 49,
+    "hexagram_name": "革"
+  },
+  "职业-晋升发展-积累": {
+    "question_type": "职业",
+    "keywords": ["晋升", "升职", "职业发展", "管理岗位"],
+    "hexagram_id": 46,
+    "hexagram_name": "升"
+  },
+  "职业-转行学习-渐进": {
+    "question_type": "职业",
+    "keywords": ["转行", "换行业", "学习新技能", "跨行业"],
+    "hexagram_id": 53,
+    "hexagram_name": "渐"
+  },
+  "职业-离职退场-遁": {
+    "question_type": "职业",
+    "keywords": ["辞职", "离职", "退出", "休息一段时间"],
+    "hexagram_id": 33,
+    "hexagram_name": "遁"
+  },
+  "合作-结盟互助-比": {
+    "question_type": "人际",
+    "keywords": ["合伙", "合作", "联合", "伙伴"],
+    "hexagram_id": 8,
+    "hexagram_name": "比"
+  },
+  "合作-分歧冲突-睽": {
+    "question_type": "人际",
+    "keywords": ["意见不合", "团队冲突", "分歧", "核心成员离职", "核心成员"],
+    "hexagram_id": 38,
+    "hexagram_name": "睽"
+  },
+  "合同-欠款诉讼-讼": {
+    "question_type": "综合",
+    "keywords": ["拖欠货款", "起诉", "合同纠纷", "违约"],
+    "hexagram_id": 6,
+    "hexagram_name": "讼"
+  },
+  "供应链-更换变革-革": {
+    "question_type": "综合",
+    "keywords": ["供应商", "涨价", "更换供应商", "采购成本"],
+    "hexagram_id": 49,
+    "hexagram_name": "革"
+  },
+  "市场-海外扩张-晋": {
+    "question_type": "综合",
+    "keywords": ["海外市场", "市场扩张", "进入新市场", "国际化"],
+    "hexagram_id": 35,
+    "hexagram_name": "晋"
+  },
+  "投资-高风险等待-需": {
+    "question_type": "投资",
+    "keywords": ["房价下跌", "抄底", "高风险投资", "等待机会"],
+    "hexagram_id": 5,
+    "hexagram_name": "需"
+  },
+  "财务-债务困境-困": {
+    "question_type": "投资",
+    "keywords": ["负债", "债务", "周转困难", "资金链"],
+    "hexagram_id": 47,
+    "hexagram_name": "困"
+  },
+  "学业-启蒙选择-蒙": {
+    "question_type": "学业",
+    "keywords": ["高考", "考研", "选专业", "在职研究生"],
+    "hexagram_id": 4,
+    "hexagram_name": "蒙"
+  },
+  "婚恋-关系确认-咸": {
+    "question_type": "婚恋",
+    "keywords": ["恋爱", "感情", "是否合适", "确认关系"],
+    "hexagram_id": 31,
+    "hexagram_name": "咸"
+  },
+  "婚恋-长期承诺-恒": {
+    "question_type": "婚恋",
+    "keywords": ["结婚", "长期关系", "异地恋", "婚姻"],
+    "hexagram_id": 32,
+    "hexagram_name": "恒"
+  },
+  "家庭-角色边界-家人": {
+    "question_type": "综合",
+    "keywords": ["家庭", "父母", "子女", "家庭分工"],
+    "hexagram_id": 37,
+    "hexagram_name": "家人"
+  },
+  "健康-停止休养-艮": {
+    "question_type": "健康",
+    "keywords": ["身体不舒服", "过度劳累", "高强度工作", "休养"],
+    "hexagram_id": 52,
+    "hexagram_name": "艮"
+  },
+  "危机-脱困解决-解": {
+    "question_type": "综合",
+    "keywords": ["危机", "脱困", "解决困难", "解除风险"],
+    "hexagram_id": 40,
+    "hexagram_name": "解"
+  },
+  "组织-制度重建-井": {
+    "question_type": "综合",
+    "keywords": ["组织结构", "制度", "流程重建", "基础设施"],
+    "hexagram_id": 48,
+    "hexagram_name": "井"
+  },
+  "复盘-重新开始-复": {
+    "question_type": "综合",
+    "keywords": ["重新开始", "重启", "回归", "再试一次"],
+    "hexagram_id": 24,
+    "hexagram_name": "复"
+  },
   "scenario_100": {
     "question_type": "综合",
     "keywords": [

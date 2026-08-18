@@ -132,3 +132,40 @@ async def create_history(record: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存失败：{str(e)}")
+
+
+@router.patch("/{report_id}/feedback")
+async def update_history_feedback(
+    report_id: str, feedback: dict[str, Any]
+) -> dict[str, Any]:
+    """Record what the user chose and what happened afterwards."""
+    file_path = HISTORY_DIR / f"{report_id}.json"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="报告不存在")
+
+    rating = feedback.get("usefulness_rating")
+    if rating is not None and (not isinstance(rating, int) or not 1 <= rating <= 5):
+        raise HTTPException(status_code=400, detail="usefulness_rating 必须是 1-5 的整数")
+
+    allowed = {
+        "decision_taken",
+        "outcome",
+        "usefulness_rating",
+        "notes",
+    }
+    cleaned = {
+        key: value
+        for key, value in feedback.items()
+        if key in allowed and isinstance(value, (str, int))
+    }
+    cleaned["reviewed_at"] = datetime.now().isoformat()
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            record = json.load(f)
+        record["feedback"] = cleaned
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        return {"status": "ok", "id": report_id, "feedback": cleaned}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="报告文件损坏")

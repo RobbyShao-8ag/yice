@@ -155,11 +155,16 @@ class YaoAgent:
 
         line_name = line_data["line_name"]
         yao_ci = line_data["yao_ci"]
+        plain_explanation = line_data.get("plain_explanation", "")
 
         if self._llm_call is None:
-            return self._generate_local_analysis(hexagram_context, line_name, yao_ci)
+            return self._generate_local_analysis(
+                hexagram_context, line_name, yao_ci, plain_explanation
+            )
 
-        user_prompt = self._build_user_prompt(hexagram_context, line_name, yao_ci)
+        user_prompt = self._build_user_prompt(
+            hexagram_context, line_name, yao_ci, plain_explanation
+        )
         response = self._llm_call(self._system_prompt, user_prompt)
 
         return self._parse_response(self.position.value, line_name, yao_ci, response)
@@ -169,6 +174,7 @@ class YaoAgent:
         hexagram_context: HexagramContext,
         line_name: str,
         yao_ci: str,
+        plain_explanation: str = "",
     ) -> str:
         """Build user prompt for LLM call."""
         question = hexagram_context.question
@@ -183,6 +189,7 @@ class YaoAgent:
 卦象：{hexagram_context.hexagram_name}（第{hexagram_context.hexagram_id}卦）
 爻位：{line_name}
 爻辞：{yao_ci}
+经审核的白话提示：{plain_explanation or '暂无；请只依据原文和用户事实分析'}
 
 请从{self.position.fused_role}的角度分析此爻辞对用户问题的启示。"""
 
@@ -217,6 +224,7 @@ class YaoAgent:
         hexagram_context: HexagramContext,
         line_name: str,
         yao_ci: str,
+        plain_explanation: str = "",
     ) -> YaoAnalysis:
         question = hexagram_context.question
         hexagram_name = hexagram_context.hexagram_name
@@ -261,6 +269,8 @@ class YaoAgent:
             ),
         }
         analysis, advice, risks = templates[self.position]
+        if plain_explanation:
+            analysis = f"{analysis} 白话提示：{plain_explanation}"
 
         return YaoAnalysis(
             position=self.position.value,
